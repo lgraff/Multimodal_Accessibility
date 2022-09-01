@@ -1,0 +1,5 @@
+"fare_id","route_id","origin_id","destination_id"
+regular_fare_01,"","01","01"
+regular_fare_01_to_FZ,"","01","FZ"
+regular_fare_FZ_to_01,"","FZ","01"
+free_fare,"","FZ","FZ"

@@ -1,0 +1,6 @@
+"fare_id","price","currency_type","payment_method","transfers"
+regular_fare_01,2.75,"USD",0,0
+regular_fare_01_to_FZ,2.75,"USD",0,0
+regular_fare_FZ_to_01,2.75,"USD",0,0
+free_fare,0,"USD",0,0
+
