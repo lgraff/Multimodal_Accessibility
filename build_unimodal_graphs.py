@@ -7,15 +7,20 @@ Created on Thu Aug 18 17:52:13 2022
 """
 
 # import libraries
-import yaml
 import geopandas as gpd
 import pandas as pd
 import os
 import networkx as nx 
+import numpy as np
 import matplotlib.pyplot as plt
-from util_functions import *
-from build_PT_graph import build_PT_graph
-from build_bikeshare_graph import build_bikeshare_graph
+from shapely import wkt, geometry
+import util_functions as ut
+import config as conf
+from PT_graph import build_PT_graph
+from bikeshare_graph import build_bikeshare_graph
+#from create_study_area import conf.study_area_gdf
+#import global_ as gl
+#from global_ import config_data, conf.study_area_gdf
 
 # TO DO: in the original osm file, convert from multigraph to digraph
 # this will eliminate repetitive keys 
@@ -23,11 +28,14 @@ from build_bikeshare_graph import build_bikeshare_graph
 # load config file
 #config_data = load_config('config.yaml')
     
-# read study area file
+# # read study area file
+
+# conf.study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
+
+
+#%%
 cwd = os.getcwd()
 filepath = os.path.join(cwd, 'Data', 'Output_Data')
-study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
-
 # read edge files, node files, and crash files
 gdf_drive_edges = gpd.read_file(os.path.join(filepath, 'gdf_safety_edges_veh.csv')).sort_values(by=['u','v','avg_TT_min']).drop_duplicates(['u','v'])
 gdf_drive_nodes = gpd.read_file(os.path.join(filepath, 'osm_drive_nodes.csv'))
@@ -40,15 +48,14 @@ gdf_bike_edges['crash_count'] = gdf_bike_edges['crash_count'].fillna(0)
 
 # 1) drive risk: depends only on crash; 2) bike risk: depends on bike infrastructure
 gdf_drive_edges.loc[:,'crash_per_meter'] = (gdf_drive_edges['crash_count'] / gdf_drive_edges['length'])
-gdf_drive_edges.loc[:,'risk_idx'] = 1 + config_data['Risk_Parameters']['crash_weight'] * gdf_drive_edges['crash_per_meter']
-gdf_bike_edges['risk_idx'] = gdf_bike_edges.apply(lambda row: calc_bike_risk_index(row), axis=1)
-
+gdf_drive_edges.loc[:,'risk_idx'] = 1 + conf.config_data['Risk_Parameters']['crash_weight'] * gdf_drive_edges['crash_per_meter']
+gdf_bike_edges['risk_idx'] = gdf_bike_edges.apply(lambda row: ut.calc_bike_risk_index(row, conf.config_data['Risk_Parameters']['risk_weight_active']), axis=1)
 
 # Here we build the travel time multiplier as a function of time 
 # some arbitary piecewise function
 # add travel time by interval
-len_period = int(config_data['Time_Intervals']['len_period'])
-num_intervals = int(config_data['Time_Intervals']['len_period'] / config_data['Time_Intervals']['interval_spacing']) + 1
+len_period = int(conf.config_data['Time_Intervals']['len_period'])
+num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
 
 x = np.linspace(0, len_period, num_intervals )  # x is time [min past] relative to 07:00 AM
 y = np.piecewise(x, [x < 15, ((x>=15) & (x<45)), ((x>=45) & (x<=75)), ((x>75) & (x<105)), x >= 105],
@@ -61,12 +68,12 @@ plt.ylabel('Travel time multiplier \n (relative to baseline)')
 
 for i in range(num_intervals):
     # These can all be updated with real data as it is available 
-    # travel time
+    # travel time: avg_TT = TT_multiplier * (distance / speed_limit)
     gdf_drive_edges['interval' + str(i) + '_avg_TT_min'] = y[i] * gdf_drive_edges['avg_TT_min']
     gdf_bike_edges['interval' + str(i) + '_avg_TT_min'] = gdf_bike_edges['avg_TT_min']
     # reliability
-    gdf_drive_edges['interval' + str(i) + '_reliability'] = config_data['Active_Mode_Parameters']['rel_weight_nonactive'] * gdf_drive_edges['interval' + str(i) + '_avg_TT_min']
-    gdf_bike_edges['interval' + str(i) + '_reliability'] = config_data['Active_Mode_Parameters']['rel_weight_active'] * gdf_bike_edges['interval' + str(i) + '_avg_TT_min']
+    gdf_drive_edges['interval' + str(i) + '_reliability'] = conf.config_data['Reliability_Params']['drive'] * gdf_drive_edges['interval' + str(i) + '_avg_TT_min']
+    gdf_bike_edges['interval' + str(i) + '_reliability'] = conf.config_data['Reliability_Params']['bike'] * gdf_bike_edges['interval' + str(i) + '_avg_TT_min']
     # risk
     gdf_drive_edges['interval' + str(i) + '_risk'] = gdf_drive_edges['risk_idx'] * gdf_drive_edges['avg_TT_min']
     gdf_bike_edges['interval' + str(i) + '_risk'] = gdf_bike_edges['risk_idx'] * gdf_bike_edges['avg_TT_min']
@@ -76,80 +83,204 @@ for i in range(num_intervals):
 interval_cols = [x for x in gdf_drive_edges.columns.tolist() if x.startswith('interval')]
 edge_attr_cols = ['highway', 'length', 'speed_kph', 'travel_time', 'avg_TT_min',
        'tot_inj_sum', 'crash_count', 'geometry', 'risk_idx'] + interval_cols
-G_drive = gdfs_to_nxgraph(gdf_drive_edges, gdf_drive_nodes, 'u', 'v', 'osmid', 'y', 'x', edge_attr_cols)
-G_bike = gdfs_to_nxgraph(gdf_bike_edges, gdf_bike_nodes, 'u', 'v', 'osmid', 'y', 'x', edge_attr_cols + ['bikeway_type'])
+G_drive = ut.gdfs_to_nxgraph(gdf_drive_edges, gdf_drive_nodes, 'u', 'v', 'osmid', 'y', 'x', edge_attr_cols)
+G_bike = ut.gdfs_to_nxgraph(gdf_bike_edges, gdf_bike_nodes, 'u', 'v', 'osmid', 'y', 'x', edge_attr_cols + ['bikeway_type'])
 
 # draw driving graph for visualization
+# To do: go back and ensure no self-loops
 # node_cmap = {'intersection node': '#1f77b4'}
-# ax = draw_graph(G_drive, '#1f77b4', node_cmap, edge_color='gray')
+# ax = ut.draw_graph(G_drive, '#1f77b4', node_cmap, edge_color='gray')
 # ax.set_title('Driving Network for Selected Neighborhoods', fontsize=16)
 
 #%%
-# TNC graph
+# TNC graph: 
+    # Attributes: TT, reliability, risk, price, discomfort
 G_tnc = G_drive.copy()
 nx.set_node_attributes(G_tnc, 't', 'nwk_type')
 nx.set_edge_attributes(G_tnc, 't', 'mode_type')
-#G_tnc = rename_nodes(G_tnc, 't')
+G_tnc = ut.rename_nodes(G_tnc, 't')
 
 # add TNC price
-TNC_ppmile = config_data['Price_Params']['TNC_ppmile']
-TNC_ppmin = config_data['Price_Params']['TNC_ppmin']
-miles_in_km = config_data['Conversion_Factors']['miles_in_km']
+TNC_ppmile = conf.config_data['Price_Params']['TNC']['ppmile']
+TNC_ppmin = conf.config_data['Price_Params']['TNC']['ppmin']
+miles_in_km = conf.config_data['Conversion_Factors']['miles_in_km']
 for e in G_tnc.edges:
     for i in range(num_intervals):
         G_tnc.edges[e]['interval'+str(i)+'_price'] = (TNC_ppmin * G_tnc.edges[e]['interval'+str(i)+'_avg_TT_min'] +
                                                       TNC_ppmile * miles_in_km * G_tnc.edges[e]['length']/1000)
+        G_tnc.edges[e]['interval'+str(i)+'_discomfort'] = conf.config_data['Discomfort_Params']['TNC']
+# the five attributes have been accounted for: avg_TT, reliability ,risk, price, reliability 
+
 #%%
 # PERSONAL VEHICLE graph
 # add park & ride?
 G_pv = G_drive.copy()  # the personal vehicle graph is a copy of the driving graph
-G_pv = rename_nodes(G_pv, 'pv')
+G_pv = ut.rename_nodes(G_pv, 'pv')
 nx.set_node_attributes(G_pv, 'pv', 'nwk_type')
 nx.set_edge_attributes(G_pv, 'pv', 'mode_type')
 
 # add price
-pv_ppmile = config_data['Price_Params']['pv_ppmile']
-meters_in_mile = config_data['Conversion_Factors']['meters_in_mile']
+meters_in_mile = conf.config_data['Conversion_Factors']['meters_in_mile']
 for e in G_pv.edges:
-    price = pv_ppmile * (G_pv.edges[e]['length'] / meters_in_mile)  # op cost per edge
+    price = pv_ppmile = conf.config_data['Price_Params']['pv']['ppmile'] * (G_pv.edges[e]['length'] / meters_in_mile)  # op cost per edge
     #G_pv.edges[e]['price'] = price
     price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_intervals)], num_intervals * [price]))
     nx.set_edge_attributes(G_pv, {e: price_attr})
+    for i in range(num_intervals):
+        G_pv.edges[e]['interval'+str(i)+'_discomfort'] = conf.config_data['Discomfort_Params']['pv']
 
 # join parking nodes and connection edges to the personal vehicle network
 gdf_parking_nodes = gpd.read_file(os.path.join(filepath, 'parking_points.csv'))
-gdf_parking_nodes_clip = gpd.clip(gdf_parking_nodes, study_area_gdf).reset_index().drop(columns='index')
+gdf_parking_nodes_clip = gpd.clip(gdf_parking_nodes, conf.study_area_gdf).reset_index().drop(columns='index')
 gdf_parking_nodes_clip['pos'] = tuple(zip(gdf_parking_nodes_clip['longitude'], gdf_parking_nodes_clip['latitude']))  # add position
 gdf_parking_nodes_clip.insert(0, 'ID', gdf_parking_nodes_clip.index)  # add ID to each parking node
 
-G_pv = add_depots_cnx_edges(gdf_parking_nodes_clip, gdf_drive_nodes, ['ID','pos','zone','float_rate'],
-                                'k', 'pv', config_data['Speed_Params']['parking_speed'], interval_cols, G_pv)
+G_pv = ut.add_depots_cnx_edges(gdf_parking_nodes_clip, gdf_drive_nodes, ['ID','pos','zone','float_rate'],
+                               'k', 'pv', 'drive', num_intervals, G_pv,
+                               'to_depot')
 
 # plot for visualization
-node_color = ['black' if n.startswith('pv') else 'blue' for n in G_pv.nodes]
-edge_color = ['grey' if e[0].startswith('pv') and e[1].startswith('pv') else 'magenta' for e in G_pv.edges]
-ax = draw_graph(G_pv, node_color, {'road intersection':'black', 'pnr':'blue'}, edge_color)
-ax.set_title('Personal Vehicle Network')
+# node_color = ['black' if n.startswith('pv') else 'blue' for n in G_pv.nodes]
+# edge_color = ['grey' if e[0].startswith('pv') and e[1].startswith('pv') else 'magenta' for e in G_pv.edges]
+# ax = ut.draw_graph(G_pv, node_color, {'road intersection':'black', 'pnr':'blue'}, edge_color)
+# ax.set_title('Personal Vehicle Network')
 
-#%% PERSONAL BIKE graph
+#%% PERSONAL BIKE graph:
+    # Attributes: TT, reliability, risk, price, discomfort
 G_pb = G_bike.copy()
-G_pb = rename_nodes(G_pb, 'pb')
+G_pb = ut.rename_nodes(G_pb, 'pb')
 nx.set_node_attributes(G_pb, 'pb', 'nwk_type')
 nx.set_edge_attributes(G_pb, 'pb', 'mode_type')
 
 for e in G_pb.edges:
-    price = config_data['Price_Params']['pb_ppmin'] * G_pb.edges[e]['avg_TT_min']  # op cost per edge (which is 0)
+    price = conf.config_data['Price_Params']['pb']['ppmin'] * G_pb.edges[e]['avg_TT_min']  # op cost per edge (which is 0)
     price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_intervals)], num_intervals * [price]))
     nx.set_edge_attributes(G_pb, {e: price_attr})
 
-#%% BIKESHARE graph
-G_bs = build_bikeshare_graph(G_bike, filepath, 'Latitude', 'Longitude', 
-                             'Station #', 'Station Name', '# of Racks')
+    discomf = conf.config_data['Discomfort_Params']['pb'] * G_pb.edges[e]['avg_TT_min']
+    discomf_attr = dict(zip(['interval'+str(i)+'_discomf' for i in range(num_intervals)], 
+                             num_intervals * [discomf]))
+    nx.set_edge_attributes(G_pb, {e: discomf_attr})
+#%% BIKESHARE graph:
+    # Attributes: TT, reliability, risk, price, discomfort
+    # *except* connection edges do not yet have all 5
+bs_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'pgh_bikeshare_depot_q3_2021.csv')
+G_bs = build_bikeshare_graph(G_bike, bs_filepath, 'Latitude', 'Longitude', 
+                             'Station #', 'Station Name', '# of Racks', num_intervals, gdf_bike_nodes)
 
 #%% PUBLIC TRANSIT graph
-G_pt = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
+G_pt_full = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'), 
                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))
+
+
+#%% Reduce the size of the PT network through a bounding box approach:
+    # Find the bounding box of the pgh_study_area polygon. Extend this bounding box by x miles. Then clip the PT network by this extended bounding box
+
+df = pd.DataFrame.from_dict(dict(G_pt_full.nodes), orient="index").reset_index()
+#gdf_pt = gpd.GeoDataFrame(data=df, geometry=df.pos)
+df[['x','y']] = pd.DataFrame(df.pos.tolist())
+gdf_ptnodes = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x,df.y))
+gdf_ptnodes.head(3)
+#bbox_study_area = conf.study_area_gdf['geometry'].bounds.T.to_dict()[0]  # bounding box of neighborhood polygon layer
+bbox_df = conf.study_area_gdf['geometry'].bounds
+x = 0.5
+# extend the bounds of the study area
+bbox_df['newminx'] = bbox_df['minx'] - 1/69 * x  # 1 degree/69 mile
+bbox_df['newmaxx'] = bbox_df['maxx'] + 1/69 * x
+bbox_df['newminy'] = bbox_df['miny'] - 1/69 * x 
+bbox_df['newmaxy'] = bbox_df['maxy'] + 1/69 * x
+# define new points that will be used to define an extended bounding box
+pt1 = geometry.Point(bbox_df.newminx, bbox_df.newminy)
+pt2 = geometry.Point(bbox_df.newminx, bbox_df.newmaxy)
+pt3 = geometry.Point(bbox_df.newmaxx, bbox_df.newmaxy)
+pt4 = geometry.Point(bbox_df.newmaxx, bbox_df.newminy)
+bbox_new = geometry.Polygon((pt1,pt2,pt3,pt4))
+bbox_new_gdf = gpd.GeoDataFrame(gpd.GeoSeries(bbox_new), columns=['geometry'])
+# check that this worked
+fig,ax = plt.subplots(figsize=(4,4))
+conf.study_area_gdf.plot(ax=ax, color='blue')
+bbox_new_gdf.plot(ax=ax, color='green', alpha=.4)
+# clip the list of all pt nodes to just those within the new bbox
+pt_graph_clip = gpd.clip(gdf_ptnodes, bbox_new_gdf)
+pt_graph_clip.set_index('index', inplace=True)
+# go back to the original PT graph, only keep nodes edges that are within the buffered bounding box
+# 1) Nodes
+G_pt = nx.DiGraph()
+node_dict = pt_graph_clip.to_dict(orient='index')
+G_pt.add_nodes_from(node_dict.keys())
+nx.set_node_attributes(G_pt, node_dict)
+# 2) Edges
+df_pt_edges = nx.to_pandas_edgelist(G_pt_full)
+df_edges_keep = df_pt_edges.loc[(df_pt_edges['source'].isin(pt_graph_clip.index.tolist())) & (df_pt_edges['target'].isin(pt_graph_clip.index.tolist()))]
+df_edges_keep.set_index(['source','target'], inplace=True)
+edge_dict = df_edges_keep.to_dict(orient='index')
+G_pt.add_edges_from(edge_dict.keys())
+nx.set_edge_attributes(G_pt, edge_dict)
+# plot for visualization
+node_color = ['black' if n.startswith('ps') else 'blue' for n in G_pt.nodes]
+edge_color = ['grey' if (e[0].startswith('ps') and e[1].startswith('rt')) | (e[0].startswith('rt') and e[1].startswith('ps')) else 'black' for e in G_pt.edges]
+ax = ut.draw_graph(G_pt, node_color, {'physical stop':'black', 'route node':'blue'}, edge_color)
+ax.set_title('Public Transit Network')
+
+#%% SCOOTER graph:
+    # Attributes: TT, reliability ,risk,
+G_sc = G_bike.copy()
+G_sc = ut.rename_nodes(G_sc, 'sc')
+nx.set_node_attributes(G_sc, 'sc', 'nwk_type')
+nx.set_edge_attributes(G_sc, 'sc', 'mode_type')
+
+# price and discomf are time-dependent
+for e in G_sc.edges:
+    for i in range(num_intervals):
+        price = conf.config_data['Price_Params']['scoot']['ppmin'] * G_sc.edges[e]['interval'+str(i)+'_avg_TT_min']  # op cost per edge
+        G_sc.edges[e]['interval'+str(i)+'_price'] = price
+        discomf = conf.config_data['Discomfort_Params']['scoot'] * G_sc.edges[e]['interval'+str(i)+'_avg_TT_min']
+        G_sc.edges[e]['interval'+str(i)+'_discomfort'] = discomf
+
+#%% ZIPCAR (or generally, carshare) graph
+# read data which was obtained from Google MyMaps
+filepath = os.path.join(cwd,'Data','Input_Data','Zipcar_Depot.csv')
+df_zip = pd.read_csv(filepath)
+gdf_zip = gpd.GeoDataFrame(data=df_zip, geometry=df_zip['WKT'].apply(wkt.loads), crs='EPSG:4326').reset_index()[['index','geometry']]
+gdf_zip['pos'] = tuple(zip(gdf_zip.geometry.x, gdf_zip.geometry.y)) # add position
+gdf_zip.rename(columns={'index':'ID'}, inplace=True)
+gdf_zip_clip = gpd.clip(gdf_zip, conf.study_area_gdf)
+
+# steps: copy the driving graph. add parking cnx edges. add zip depot cnx edges
+G_z = G_drive.copy()
+G_z = ut.rename_nodes(G_z, 'z')
+nx.set_node_attributes(G_z, 'z', 'nwk_type')
+nx.set_edge_attributes(G_z, 'z', 'mode_type')
+
+# add price and discomf attributes, which are time-dep 
+for e in G_z.edges:
+    for i in range(num_intervals):
+        price = conf.config_data['Price_Params']['zip']['ppmin'] * G_z.edges[e]['interval'+str(i)+'_avg_TT_min']  # op cost per edge
+        G_z.edges[e]['interval'+str(i)+'_price'] = price
+        discomf = conf.config_data['Discomfort_Params']['zip'] * G_z.edges[e]['interval'+str(i)+'_avg_TT_min']
+        G_z.edges[e]['interval'+str(i)+'_discomfort'] = discomf
+
+# add parking cnx edges
+G_z = ut.add_depots_cnx_edges(gdf_parking_nodes_clip, gdf_drive_nodes, ['ID','pos','zone','float_rate'],
+                               'kz', 'z', 'drive', num_intervals, G_z, 'to_depot')
+# add depot cnx edges
+G_z = ut.add_depots_cnx_edges(gdf_zip_clip, gdf_drive_nodes, ['ID','pos'],
+                               'zd', 'z', 'drive', num_intervals, G_z, 'from_depot')
+
+# plot for visualization
+# node_color = ['blue' if n.startswith('zd') else 'red' if n.startswith('k') else 'black' for n in G_z.nodes]
+# edge_color = ['grey' if e[0].startswith('z') and e[1].startswith('z') else 'magenta' for e in G_z.edges]
+# ax = ut.draw_graph(G_z, node_color, {'road intersection':'black', 'depot':'blue', 'park':'red'}, edge_color)
+# ax.set_title('Personal Vehicle Network')
+
+
+#%% successful testing
+for e in G_z.edges:
+    if e[1].startswith('zd'):
+        print(e)
+
+#%%
 
 # G_bs = G_bike.copy()  
 # nx.set_node_attributes(G_bs, 'bs', 'nwk_type')
@@ -165,7 +296,7 @@ G_pt = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
 # gdf_bs = gpd.GeoDataFrame(df_bs)  # convert to geo df
 # gdf_bs['pos'] = tuple(zip(gdf_bs['Longitude'], gdf_bs['Latitude']))  # add position
 # # Clip the bs node network
-# gdf_bs_clip = gpd.clip(gdf_bs, study_area_gdf).reset_index().drop(columns=['index']).rename(columns={'Station #': 'ID'})
+# gdf_bs_clip = gpd.clip(gdf_bs, conf.study_area_gdf).reset_index().drop(columns=['index']).rename(columns={'Station #': 'ID'})
 
 # # join depot nodes and connection edges to the bikeshare (biking) network
 # G_bs = add_depots_cnx_edges(gdf_bs_clip, gdf_bike_nodes, ['ID','Station Name', 'pos', '# of Racks'], 
@@ -183,7 +314,7 @@ G_pt = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
 #%%
 # join parking nodes and connection edges to the personal vehicle network
 # gdf_parking_nodes = gpd.read_file(os.path.join(filepath, 'parking_points.csv'))
-# gdf_parking_nodes_clip = gpd.clip(gdf_parking_nodes, study_area_gdf).reset_index().drop(columns='index')
+# gdf_parking_nodes_clip = gpd.clip(gdf_parking_nodes, conf.study_area_gdf).reset_index().drop(columns='index')
 # gdf_parking_nodes_clip['pos'] = tuple(zip(gdf_parking_nodes_clip['longitude'], gdf_parking_nodes_clip['latitude']))  # add position
 # gdf_parking_nodes_clip.insert(0, 'ID', gdf_parking_nodes_clip.index)  # add ID to each parking node
 

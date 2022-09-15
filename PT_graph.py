@@ -7,31 +7,32 @@ Created on Mon Aug 29 17:06:08 2022
 """
 
 # import libraries
-import yaml
-import geopandas as gpd
+#import yaml
+#import geopandas as gpd
 import pandas as pd
 import os
 import networkx as nx 
 import matplotlib.pyplot as plt
-from util_functions import *
+import config as conf
+import util_functions as ut
 
-cwd = os.getcwd()
+# cwd = os.getcwd()
 
-# load config file
-config_data = load_config('config.yaml')
+# # load config file
+# config_data = load_config('config.yaml')
 
-# read study area file
+# # read study area file
 
-filepath = os.path.join(cwd, 'Data', 'Output_Data')
-study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
+# filepath = os.path.join(cwd, 'Data', 'Output_Data')
+# study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
 
 def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
 
-    num_intervals = int(config_data['Time_Intervals']['len_period'] / config_data['Time_Intervals']['interval_spacing']) + 1
+    num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
 
     # read study area file
-    filepath = os.path.join(cwd, 'Data', 'Output_Data')
-    study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
+    # filepath = os.path.join(cwd, 'Data', 'Output_Data')
+    # study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
 
     # GTFS_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'GTFS')
     # headway_filepath = os.path.join(
@@ -56,7 +57,7 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
     nx.set_node_attributes(G_pt, stopnode_dict)  
     nx.set_node_attributes(G_pt, 'ps', 'nwk_type')  
 
-    ax = draw_graph(G_pt, 'blue', {'phsyical stop': 'blue'}, 'grey')  # checks out
+    ax = ut.draw_graph(G_pt, 'blue', {'phsyical stop': 'blue'}, 'grey')  # checks out
 
     # Convert to gdf, but don't clip to study area. Might be the case where the stops on a route go outside the study
     # area but then come back into the study area. If we remove the stops outside the study area, bus route will be
@@ -155,12 +156,12 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
             # BOARDING edges
             e_board = (phys_stop, n)
             # add price of one-way fare and waiting cost as headway/2; # call waiting cost "avg_TT_min" for sake of consistency in attribute definitions
-            attr_dict = {'avg_TT_min': headway_min/2, 'price': 2.75}  # ,
+            #attr_dict = {'avg_TT_min': headway_min/2, 'price': 2.75}  # ,
             # add pure attributes
             TT_attr = dict(zip(['interval'+str(i)+'_avg_TT_min' for i in range(
                 num_intervals)], num_intervals * [headway_min/2]))  # avg wait time is defined as headway/2
             price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(
-                num_intervals)], num_intervals * [config_data['Price_Params']['PT_price']]))
+                num_intervals)], num_intervals * [conf.config_data['Price_Params']['PT']['fixed']]))
             #'reliability': rel_weights('pt') * headway_min/2, 'risk_idx':0, 'risk': 0,
             #'mode_type':'board'}  # observe no risk
             ba_edges.append((e_board[0], e_board[1], TT_attr | price_attr))
@@ -186,6 +187,6 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
     return G_pt
 
 #%% test the function
-G_pt = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
-                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'), 
-                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))
+# G_pt = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
+#                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'), 
+#                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))

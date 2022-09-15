@@ -7,21 +7,23 @@ Created on Wed Aug 17 16:08:26 2022
 """
 
 # import libraries
-import geopandas as gpd
-import pandas as pd
+#import geopandas as gpd
+#import pandas as pd
 import os
 import osmnx as ox
-import networkx as nx
+import config as conf
+#import networkx as nx
+
 
 # read study area file
 cwd = os.getcwd()
 filepath = os.path.join(cwd, 'Data', 'Output_Data')
-study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
+#study_area_gdf = conf.study_area_gdf  #gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
 
 # import drive and bike street networks
 # retain_all = False argument means that the smaller disconnected network is not retained
-G_drive = ox.graph_from_polygon(study_area_gdf['geometry'][0], network_type='drive', retain_all=False)
-G_bike = ox.graph_from_polygon(study_area_gdf['geometry'][0], network_type='bike', retain_all=False)
+G_drive = ox.graph_from_polygon(conf.study_area_gdf['geometry'][0], network_type='drive', retain_all=False)
+G_bike = ox.graph_from_polygon(conf.study_area_gdf['geometry'][0], network_type='bike', retain_all=False)
 
 # add edge speed and travel time
 ox.speed.add_edge_speeds(G_drive)
@@ -59,6 +61,8 @@ hierarchy = {'cycleway':0, 'path':1, 'service': 1.5, 'residential':2,
 gdf_edges_bike['new_highway'] = gdf_edges_bike['highway'].map(hierarchy)
 gdf_edges_bike = gdf_edges_bike.sort_values(['u','v','new_highway']).drop_duplicates(['u','v'])
 
+# Remove self-loops
+# G.remove_edges_from(nx.selfloop_edges(G))
 
 #%%
 #gdf_edges_drive['highway'] = gdf_edges_drive['highway'].astype('str')

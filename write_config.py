@@ -10,6 +10,7 @@ Build config file
 
 import yaml
 
+# Define parameters
 config_info = {
     'Geography': {
         'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North']
@@ -22,24 +23,35 @@ config_info = {
         'b_rel_weight': 0.75
         },  # ultimately need b_rel_weight * b_TT
     'Speed_Params': {
-        'walk_speed': 1.3,  # m/s
-        'parking_speed': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
-        'scoot_speed': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
-        'bike_speed': 15 / 3600 * 1000    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+        'walk': 1.3,  # m/s
+        #'parking_speed': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
+        'scoot': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+        'bike': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+        'TNC': {'wait_time': 7}  # minutes
         },   # km/hr
     'Price_Params': {
-        'scoot_ppmin': 0.39,
-        'bs_ppmin': 20/300,
-        'TNC_fix_price': 1.51 + 1.60,
-        'TNC_ppmile': 0.92,
-        'TNC_ppmin': 0.34,
-        'TNC_minfare_buffer': 8.32/4,
-        'PT_price': 2.75,
-        'pb_ppmin': 0,
-        'pv_ppmile': 0.20,
-        'zip_ppmin': 11/60,
-        'zip_fixed_ppmonth': 9,
-        'zip_est_num_trips': 4
+        'walk': {'ppmin': 0},
+        'scoot': {'ppmin': 0.39, 'fixed': 1},  # $
+        'bs': {'ppmin': 20/300},
+        'TNC': {'ppmin': 0.34, 'ppmile': 0.92, 'fixed': 1.51 + 1.60, 'minfare_buffer': 8.32/4},
+        'PT': {'fixed': 2.75},
+        'pb': {'ppmin': 0},
+        'zip': {'ppmin': 11/60, 'fixed_per_month': 9, 'est_num_trips': 4},
+        'pv': {'ppmin':0, 'ppmile': 0.20}
+        # 'walk_ppmin': 0,
+        # 'scoot_ppmin': 0.39,
+        # 'scoot_fix_price': 1,
+        # 'bs_ppmin': 20/300,
+        # 'TNC_fix_price': 1.51 + 1.60,
+        # 'TNC_ppmile': 0.92,
+        # 'TNC_ppmin': 0.34,
+        # 'TNC_minfare_buffer': 8.32/4,
+        # 'PT_price': 2.75,
+        # 'pb_ppmin': 0,
+        # 'pv_ppmile': 0.20,
+        # 'zip_ppmin': 11/60,
+        # 'zip_fixed_ppmonth': 9,
+        # 'zip_est_num_trips': 4
         },
     'Conversion_Factors': {
         'meters_in_mile': 1609,
@@ -51,20 +63,45 @@ config_info = {
         'time_start': 7,  # AM
         'time_end': 9  # AM
         },
-    'Active_Mode_Parameters': {
-        'active_modes': ['w','pb','bs','sc'],
-        'nonactive_modes': ['pv','pt','t','z'],
-        'discomf_weight_bike': 3/10,
-        'discomf_weight_scoot_walk': 1/10,
-        'rel_weight_active': 1,
-        'rel_weight_nonactive': 1.5
+    # 'Active_Mode_Parameters': {
+    #     'active_modes': ['w','pb','bs','sc'],
+    #     'nonactive_modes': ['pv','pt','t','z'],z
+    #     'discomf_weight_bike': 3/10,
+    #     'discomf_weight_scoot_walk': 1/10,
+    #     'discomf_weight_nonactive': 0,
+    #     'rel_weight_active': 1,
+    #     'rel_weight_nonactive': 1.5
+    #     },
+    'Reliability_Params': {
+        'walk': 1,
+        'scoot': 1,
+        'drive': 1.5,
+        'bike': 1,
         },
+    'Discomfort_Params': {
+        'walk': 1/10,
+        'scoot': 1/10,
+        'pb': 3/10,
+        'bs': 3/10,
+        'PT': 0,
+        'pv': 0,
+        'TNC': 0,
+        'zip': 0,
+        'drive': 0,
+        'bike': 3/10},
     'Risk_Parameters': {
         'risk_weight_active': 1.2,
         'crash_weight': 5
-        }
+        },
+    'Connection_Edge_Speed': {
+        'drive': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
+        'bike': 15 / 3600 * 1000    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+        },
+    'Supernetwork': {
+        'modes_included': ['bsd', 'z', 'sc', 't', 'pt', 'pb']}
     }
 
+# Write the config file
 with open("config.yaml", 'w') as yamlfile:
     data = yaml.dump(config_info, yamlfile)
     print("Write successful")
