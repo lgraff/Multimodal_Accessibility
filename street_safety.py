@@ -15,7 +15,8 @@ import os
 #import osmnx as ox
 #import ckanapi
 #import networkx as nx
-from util_functions import *
+import matplotlib.pyplot as plt
+import util_functions as ut
 
 # read study area file
 cwd = os.getcwd()
@@ -29,8 +30,8 @@ gdf_nodes_bike = gpd.read_file(os.path.join(filepath, 'osm_bike_edges.csv'))
 
 # get last 2 years of crash data
 site = "https://data.wprdc.org"
-crash_data_2020 = get_resource_data(site,resource_id="514ae074-f42e-4bfb-8869-8d8c461dd824",count=999999999) 
-crash_data_2019 = get_resource_data(site,resource_id="cb0a4d8b-2893-4d20-ad1c-47d5fdb7e8d5",count=999999999) 
+crash_data_2020 = ut.get_resource_data(site,resource_id="514ae074-f42e-4bfb-8869-8d8c461dd824",count=999999999) 
+crash_data_2019 = ut.get_resource_data(site,resource_id="cb0a4d8b-2893-4d20-ad1c-47d5fdb7e8d5",count=999999999) 
 
 # Convert to pandas df and concatenate
 df_crash_2020 = pd.DataFrame(crash_data_2020)
@@ -50,9 +51,9 @@ gdf_crash = gpd.GeoDataFrame(df_crash, geometry=gpd.points_from_xy(x=df_crash['D
 gdf_crash_clip = gpd.clip(gdf_crash, study_area_gdf)
 
 # Separate crashes by bike, pedestrian, vehicle
-gdf_ped_crash = gdf_crash_clip.loc[gdf_crash_clip.PEDESTRIAN == 1]  # pedestrian crashes
-gdf_bike_crash = gdf_crash_clip.loc[gdf_crash_clip.BICYCLE == 1]  # bicycle crashes
-gdf_veh_crash = gdf_crash_clip.loc[gdf_crash_clip.VEHICLE_COUNT > 1]  # vehicle crashes
+gdf_ped_crash = gdf_crash_clip.loc[gdf_crash_clip.PEDESTRIAN >= 1]  # pedestrian crashes
+gdf_bike_crash = gdf_crash_clip.loc[gdf_crash_clip.BICYCLE >= 1]  # bicycle crashes
+gdf_veh_crash = gdf_crash_clip.loc[gdf_crash_clip.VEHICLE_COUNT >= 1]  # vehicle crashes
 
 # flatten projections
 for g in [gdf_bike_crash, gdf_veh_crash, gdf_edges_bike, gdf_edges_drive]:
@@ -74,8 +75,8 @@ gdf_crash_edges_veh = join_crash_to_edge(gdf_veh_crash, gdf_edges_drive)
 #%% Bikelane
 filepath = os.path.join(cwd, 'Data', 'Input_Data', 'bike-map-2019')
 
+# the WPRDC website provides different GIS files for each bikeway types. here we will concatenate them into one gdf 
 # ** TO DO** Add more bikeway types
-
 bikeway_type = ['Bike Lanes', 'On Street Bike Route', 'Protected Bike Lane']
 gdf_bikeway = gpd.GeoDataFrame()
 for b in bikeway_type:
@@ -94,14 +95,11 @@ gdf_bikeway = gpd.clip(gdf_bikeway, study_area_gdf)
 # steps: buffer the bikeway edges -- creates a polygon
 # sjoin  how=left, left_gdf = gdf_edges_bike, right_gdf = buffered_bikeway, predicate=intersect
 
-#%%
-# Buffer the network edges
-gdf_crash_edges_bike['line_buffer_geom'] = gdf_crash_edges_bike['geometry'].buffer(distance = 2)  # 2 meter radius
+# Buffer the bike network edges
+gdf_crash_edges_bike['line_buffer_geom'] = gdf_crash_edges_bike['geometry'].buffer(distance = 0.001)  # 0.05 meter radius
 gdf_crash_edges_bike.set_geometry('line_buffer_geom', inplace=True)
 gdf_crash_edges_bike.drop_duplicates(['u','v'], inplace=True)
-
 # gdf_crash_edges_bike.plot()
-
 gdf_bikeway.to_crs(crs=3857, inplace=True)
 temp = gpd.GeoDataFrame(gpd.sjoin(gdf_crash_edges_bike, gdf_bikeway, how='left', predicate='intersects'))
 temp.set_geometry('geometry', inplace=True)
@@ -114,10 +112,15 @@ gdf_bike_crash_bikeway = temp.sort_values(['u','v','new_bikeway_type']).drop_dup
 bikelane_approx = gdf_bike_crash_bikeway.loc[~gdf_bike_crash_bikeway.bikeway_type.isna()]
 
 fig, ax = plt.subplots()
-bikelane_approx.plot(ax=ax, color='blue')
-gdf_bikeway.plot(ax=ax, color='green', alpha=0.3)
+bikelane_approx.plot(ax=ax, color='blue',  alpha=0.4, label='bikelane_approx')
+gdf_bikeway.plot(ax=ax, color='green', alpha=0.5, label='true_bikelane')
+ax.legend()
 # we see that we got more edges than are actually represented by bike lanes
 # but it's relatively accurate
+
+fig, ax = plt.subplots()
+gdf_bikeway.plot(ax=ax, color='green', alpha=0.3, label='true_bikelane', zorder=1)
+ax.legend()
 
 #%% save as csv files
 filepath = os.path.join(cwd, 'Data', 'Output_Data')

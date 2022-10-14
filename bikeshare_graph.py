@@ -22,18 +22,20 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
                           id_colname, name_colname, availability_colname, num_time_intervals, gdf_bike_network_nodes):
     G_bs = G_bike.copy()  
     nx.set_node_attributes(G_bs, 'bs', 'nwk_type')
+    nx.set_node_attributes(G_bs, 'bs', 'node_type')
     nx.set_edge_attributes(G_bs, 'bs', 'mode_type')
     G_bs = ut.rename_nodes(G_bs, 'bs')
     
     # add price (which is time-independent)
     for e in G_bs.edges:
-        price = conf.config_data['Price_Params']['bs']['ppmin'] * G_bs.edges[e]['avg_TT_min']  # op cost per edge (which is 0)
+        avg_TT_min =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] / 60
+        price = conf.config_data['Price_Params']['bs']['ppmin'] * avg_TT_min  # op cost per edge (which is 0)
         price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
                               num_time_intervals * [price]))
         nx.set_edge_attributes(G_bs, {e: price_attr})
         
-        discomf = conf.config_data['Discomfort_Params']['bs'] * G_bs.edges[e]['avg_TT_min']
-        discomf_attr = dict(zip(['interval'+str(i)+'_discomf' for i in range(num_time_intervals)], 
+        discomf = conf.config_data['Discomfort_Params']['bs'] * avg_TT_min
+        discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], 
                               num_time_intervals * [discomf]))
         nx.set_edge_attributes(G_bs, {e: discomf_attr})
         
@@ -44,12 +46,18 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
     gdf_bs = gpd.GeoDataFrame(df_bs)  # convert to geo df
     gdf_bs['pos'] = tuple(zip(gdf_bs[long_colname], gdf_bs[lat_colname]))  # add position
     # Clip the bs node network
-    gdf_bs_clip = gpd.clip(gdf_bs, conf.study_area_gdf).reset_index().drop(columns=['index']).rename(
-        columns={id_colname: 'ID'})
+    study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+    gdf_bs_clip = gpd.clip(gdf_bs, study_area_gdf).reset_index().drop(columns=['index']).rename(
+        columns={id_colname: 'id'})
     # join depot nodes and connection edges to the bikeshare (biking) network
     
-    G_bs = ut.add_depots_cnx_edges(gdf_bs_clip, gdf_bike_network_nodes, ['ID', name_colname, 'pos', availability_colname], 
-                                'bsd', 'bs', 'bike', num_time_intervals, G_bs, 'both')
+    G_bs = ut.add_depots_cnx_edges(gdf_bs_clip, gdf_bike_network_nodes, # ['ID', name_colname, 'pos', availability_colname], 
+                                   'bsd', 'bs', 'bike', num_time_intervals, G_bs, 'both')   
+    for n in G_bs.nodes:
+        if n.startswith('bsd'):
+            G_bs.nodes[n]['node_type'] = 'bsd'
+            G_bs.nodes[n]['nwk_type'] = 'bs'
+    
     return G_bs
 
 

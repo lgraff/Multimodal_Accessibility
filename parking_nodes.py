@@ -14,8 +14,7 @@ for each zone
 import geopandas as gpd
 import pandas as pd
 import os
-import osmnx as ox
-from util_functions import *
+import matplotlib.pyplot as plt
 import re
 
 # read parking file
@@ -40,12 +39,13 @@ df_park['float_rate'] = df_park.apply(lambda row: to_float_rate(row['rate']), ax
 df_park_avg = df_park.groupby('zone').agg({'latitude':'mean', 'longitude':'mean', 'float_rate':'mean'}).reset_index()
 gdf_park_avg = gpd.GeoDataFrame(data=df_park_avg, geometry=gpd.points_from_xy(x=df_park_avg.longitude, y=df_park_avg.latitude),crs='epsg:4326')
 gdf_park_avg.plot()
-#print(gdf_park_avg.crs)
+study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+gdf_park_avg_clip = gpd.clip(gdf_park_avg, study_area_gdf)
 
 filepath = os.path.join(cwd, 'Data', 'Output_Data')
-gdf_park_avg.to_file(os.path.join(filepath, 'parking_points.csv'), driver='GeoJSON')
+gdf_park_avg_clip.to_file(os.path.join(filepath, 'parking_points.csv'), driver='GeoJSON')
 
-study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
+
 fig, ax = plt.subplots()
 study_area_gdf.plot(ax=ax)
 gdf_park_avg.plot(ax=ax, color='red')

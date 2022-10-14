@@ -16,15 +16,17 @@ import config as conf
 # inputs: graph, num of days of historical data, num of time intervals, num of scooter obs per time-interval day lower bound
 # and upper bound, lower and upper bound of potential (x,y) coordinate of scooter, node id map, some cost parameters
 # output: dict of dicts
-def gen_data(G_superntwk, n_days, n_intervals, n_obs, bbox): #, avg_bike_segment_length):
-    # generate some (fake) data    
-    xlb = bbox['minx']
-    xub = bbox['maxx']
-    ylb = bbox['miny']
-    yub = bbox['maxy']
+def gen_data(G_superntwk, n_days, n_intervals, n_obs, bbox, od_cnx=False): #, avg_bike_segment_length):  
+    # define the bounds
+    xlb, xub, ylb, yub = bbox['minx'], bbox['maxx'], bbox['miny'], bbox['maxy']
+    
+    if not od_cnx:
+        nid_map_fixed = G_superntwk.nid_map_fixed
+    else: # only evaluate for org
+        nid_map_fixed = {nid_num: nid_name for nid_num, nid_name in G_superntwk.nid_map.items() if nid_name in ['org']} 
     
     # initialize the scooter cost dictionary: key is the fixed node, the value is dict of costs (different cost for the different time intervals)
-    all_costs = dict([(n, {}) for n in G_superntwk.nid_map_fixed.values()])
+    all_costs = dict([(n, {}) for n in nid_map_fixed.values()])
     
     # For subsequent visualization purposes
     #fig, axs = plt.subplots(2, 5, sharex = True, sharey = True, figsize=(16,8))
@@ -44,7 +46,7 @@ def gen_data(G_superntwk, n_days, n_intervals, n_obs, bbox): #, avg_bike_segment
 
         # find edge cost
         node_cost_dict = {}
-        for n in G_superntwk.nid_map_fixed.values():  # for each fixed node 
+        for n in nid_map_fixed.values():  # for each fixed node (or, for the org/dst when generating for od_cnx)
             all_min_dist = np.empty((1,n_days))  # initialize the min distance matrix, one entry per day
                        
             for d in range(n_days):  # how many days of historical scooter data we have 

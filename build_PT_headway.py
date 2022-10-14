@@ -9,11 +9,13 @@ Created on Thu Aug 25 13:49:00 2022
 import matplotlib.pyplot as plt
 import numpy as np
 import partridge as ptg
+import pandas as pd
 import scipy.stats
 import os
 from util_functions import *
+import config as conf
 
-config_data = load_config('config.yaml')
+config_data = conf.config_data
 
 cwd = os.getcwd()
 inpath = os.path.join(cwd, 'Data', 'Input_Data', 'GTFS.zip')

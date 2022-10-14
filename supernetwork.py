@@ -1,49 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Sep 13 15:35:18 2022
+Created on Thu Sep 22 11:51:25 2022
 
 @author: lindsaygraff
 """
 
 # libraries
-import os
 import util_functions as ut
 import networkx as nx 
-from build_unimodal_graphs import G_tnc, G_pv, G_pb, G_bs, G_pt, G_sc, G_z
 import numpy as np
 from data_gen_functions import gen_data
 import config as conf
 
 #import importlib
 #importlib.reload(config)
-
-#%%
-# this dict defines which graphs correspond to each mode type 
-all_graphs_dict = {'t':G_tnc, 'pv':G_pv, 'pb':G_pb, 'bs':G_bs, 'pt':G_pt, 'sc':G_sc, 'z':G_z}
-
-# this dict defines the node names corresponding to each mode type 
-all_modes_nodes = {'bs':['bs', 'bsd'], 'pt':['ps','rt'], 't':['t'], 'sc':['sc'], 
-                   'pv':['pv','k'], 'pb':['pb'], 'z':['zd','z','kz']}
-
-# define which nodes are fixed and which come from flexible networks 
-all_fix_pre = ['bsd','ps','k', 'zd', 'kz']  # prefix for fixed nodes
-all_flex_pre = ['t', 'pb', 'pv', 'sc']  # prefix for flexible dropoff nodes
-
-modes_included = conf.config_data['Supernetwork']['modes_included']
-fix_pre_included = [n for m in modes_included for n in all_modes_nodes[m] if n in all_fix_pre]
-flex_pre_included = [n for m in modes_included for n in all_modes_nodes[m] if n in all_flex_pre]
-
-# this dict defines which modes and nodes are included in the supernetwork
-modes_nodes_included = {k:v for k,v in all_modes_nodes.items() if k in modes_included}
-networks_included = [all_graphs_dict[m] for m in modes_included]  # set([all_graphs_dict[m] for m in modes_included])
-
-pmx = [('ps','ps'),('bsd','ps'),('ps','bsd'),('ps','t'),('t','ps'),('t','bsd'),('bsd','t'), # permitted mode change
-       ('k','ps'),('k','t'),('k','bsd'),('ps','pb'),('pb','ps'),('ps','sc'),('sc','ps'),('k','sc'),
-       ('bsd','sc'), ('sc','bsd'), ('ps','zd'), ('bsd','zd'), ('t','zd'), ('sc','zd'),
-       ('kz','ps'),('kz','t'),('kz','bsd'),('kz','sc')]  
-
-#G_u = nx.union_all(networks_included)
 
 #%%
 class Supernetwork:
@@ -213,107 +184,3 @@ class Supernetwork:
         # now add the transfer edges to the supernetwork
         trans_edges = [(e[0], e[1], trans_edges[e])for e in trans_edges.keys()]
         self.graph.add_edges_from(trans_edges)
-        
-#%%        
-G_super = Supernetwork(networks_included, fix_pre_included, flex_pre_included)
-G_super.print_mode_types()
-G_super.add_coord_matrix()
-G_super.add_gcd_dist_matrix()
-G_super.separate_nidmap_fix_flex()
-G_super.define_pmx(pmx)
-
-#%%
-# add transfer edges
-W_tx = conf.config_data['Supernetwork']['W_tx'] * conf.config_data['Conversion_Factors']['meters_in_mile']
-G_super.add_transfer_edges(W_tx)
-#G_super.gcd_dist[:3,:3]
-
-#%%
-import pickle
-def save_object(obj, filename):
-    with open(filename, 'wb') as outp:
-        pickle.dump(obj, outp, pickle.HIGHEST_PROTOCOL)
-cwd = os.getcwd()
-save_object(G_super, os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'))
-
-#%% Test to ensure transfers make sense 
-trans_edges = G_super.transfer_edges
-import re
-# check: which transfers are in transfer edges
-m1m2 = set([(re.sub(r'[^a-zA-Z]', '', k[0]), re.sub(r'[^a-zA-Z]', '', k[1])) for k in trans_edges.keys()])
-print('transfers included')
-print(m1m2)
-# which transfers are we not getting -- should be all PT since right now it is not included 
-print('transfers not included')
-print(set(pmx) - m1m2)
-
-print('transfers not allowed; should be empty set')
-set(m1m2) - set(pmx)  # should be the empty set
-
-
-#%%
-gcd_dist = G_super.gcd_dist
-nid_map = G_super.nid_map
-
-
-#%%
-import re
-mode_pre = []
-for n in G_super.graph.nodes:
-    m = re.sub(r'[^a-zA-Z]', '', n)
-    mode_pre.append(m)
-
-print(set(mode_pre))
-
-#%%
-# mode_pre = []
-# for n in sc_costs.keys():
-#     m = re.sub(r'[^a-zA-Z]', '', n)
-#     mode_pre.append(m)
-# print(set(mode_pre))
-
-#%%
-# check that each node has a pos
-for n in G_super.graph.nodes:
-    if not 'pos' in G_super.graph.nodes[n]:
-        print(n)
-
-
-#%%
-
-# input: graph and jitter parameter (how much to adjust the x and y coordinates)
-# output: adjusted graph with jittered coordinates
-# this function is only for visualization purposes. the original coordinates should remain unchanged
-def jitter_nodes(G, jitter_param):
-    #G_adj = G.copy()
-    #print(G.nodes) #[node]['pos'])
-    # adjust the nodes positions in the copy 
-    for node in G.nodes.keys():
-        adj_x = G.nodes[node]['pos'][0] + jitter_param
-        #print(adj_x)
-        adj_y = G.nodes[node]['pos'][1] + jitter_param
-        #print(adj_y)
-        nx.set_node_attributes(G, {node: {'pos':(adj_x, adj_y)}})
-    return G
-
-adjusted_graph_dict = {}
-# adjust the graphs in the supernetwork using the jitter function
-# this is strictly for plotting
-# for j, m in enumerate(modes_included):
-#     print(j,m)
-#     #if m != 't':  # tnc graph is the "base" road network so it will not be adjusted
-#     G_adj = all_graphs_dict[m].copy()
-#     jitter_nodes(G_adj, jitter_param=(j/100)*2)
-#     adjusted_graph_dict[m] = G_adj
-    
-jitter_param_dict = {(m, (j/100)*2) for j,m in enumerate(modes_included)}  # can adjust jitter param as necessary
-
-G_super_adj = G_super.copy()
-pos_dict = nx.get_edge_attributes(G_super_adj, 'pos')  # this will return a dict of the form {'bs1': (70, 40), ...}
-for n, pos in pos_dict.items():
-    mode_type = G_super_adj.nodes[n]['network_type']
-    
-# draw the graph
-edge_cmap = ['silver' if edge_type == 'traversal' else 'gold' for edge, edge_type in nx.get_edge_attributes(G_super_adj,'type').items()]    
-    
-    

@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
 import re
+import pickle 
 import ckanapi
 import config as conf
 #import yaml
@@ -62,17 +63,17 @@ def flatten_proj(gdfs, crs):
     for g in gdfs:
         g.to_crs(crs=crs, inplace=True)
         
-# convert gdfs to networkx graph
-def gdfs_to_nxgraph(gdf_edges, gdf_nodes, source_col, target_col, nodeid_col, lat_col, long_col, edge_attr):
-    G = nx.from_pandas_edgelist(gdf_edges, source=source_col, target=target_col,
-                                edge_attr = edge_attr,
-                                create_using=nx.DiGraph())
-    gdf_nodes.index = gdf_nodes[nodeid_col]
-    gdf_nodes['pos'] = tuple(zip(gdf_nodes[long_col], gdf_nodes[lat_col]))  # add position
-    node_dict = gdf_nodes.drop(columns=[nodeid_col]).to_dict(orient='index')
-    G.add_nodes_from(list(node_dict.keys()))
-    nx.set_node_attributes(G, node_dict)
-    return G
+# # convert gdfs to networkx graph
+# def gdfs_to_nxgraph(gdf_edges, gdf_nodes, source_col, target_col, nodeid_col, lat_col, long_col, edge_attr):
+#     G = nx.from_pandas_edgelist(gdf_edges, source=source_col, target=target_col,
+#                                 edge_attr = edge_attr,
+#                                 create_using=nx.DiGraph())
+#     gdf_nodes.index = gdf_nodes[nodeid_col]
+#     gdf_nodes['pos'] = tuple(zip(gdf_nodes[long_col], gdf_nodes[lat_col]))  # add position
+#     node_dict = gdf_nodes.drop(columns=[nodeid_col]).to_dict(orient='index')
+#     G.add_nodes_from(list(node_dict.keys()))
+#     nx.set_node_attributes(G, node_dict)
+#     return G
 
 # def gdfnodes_to_nxgraph(gdf_nodes, id_col, lat_col, long_col):
 #     gdf_nodes.index = gdf_nodes[id_col]
@@ -83,22 +84,37 @@ def gdfs_to_nxgraph(gdf_edges, gdf_nodes, source_col, target_col, nodeid_col, la
 #     nx.set_node_attributes(G, node_dict)
 #     return G    
 
-def calc_bike_risk_index(row, risk_weight_active):
-    if((row['highway'] == 'cycleway') | (row['bikeway_type'] in (['Bike Lanes','Protected Bike Lane']))):
+# def calc_bike_risk_index(row, risk_weight_active):
+#     if((row['highway'] == 'cycleway') | (row['bikeway_type'] in (['Bike Lanes','Protected Bike Lane']))):
+#         risk_idx = 1
+#     elif(row['highway'] in (['motorway','trunk','trunk_link','primary','primary_link'])):
+#         risk_idx = 100000
+#     else:
+#         # this is a parameter to be adjusted. idea is that non-bikelane road is 25% more dangerous
+#         risk_idx = risk_weight_active 
+#     return risk_idx
+
+def calc_bike_risk_index(row):
+    risk_mapping = {'Protected Bike Lane':1, 'Bike Lanes':1.05, 'On Street Bike Route':1.2, 
+                     'Cautionary Bike Route':1.3, 'Bikeable_Sidewalks':1.05, 'None':10000}
+    risk_idx = risk_mapping[row['bikeway_type']]
+    if (row['bikeway_type'] == 'None') & (row['speed_lim'] <= 15):
         risk_idx = 1
-    elif(row['highway'] in (['motorway','trunk','trunk_link','primary','primary_link'])):
-        risk_idx = 100000
-    else:
-        # this is a parameter to be adjusted. idea is that non-bikelane road is 25% more dangerous
-        risk_idx = risk_weight_active 
+    elif (row['bikeway_type'] == 'None') & (15 < row['speed_lim'] <= 25):
+        risk_idx = 1.1
+    elif (row['bikeway_type'] == 'None') & (25 < row['speed_lim'] <= 35):
+        risk_idx = 1.3 
+    elif (row['bikeway_type'] == 'None') & (row['speed_lim'] > 35):
+        risk_idx = 10000
     return risk_idx
 
-def draw_graph(G, node_color, node_cmap, edge_color):
+def draw_graph(G, node_color, node_cmap, edge_color, edge_style, adjusted=False):
     # draw the graph in networkx
-    node_coords = nx.get_node_attributes(G, 'pos')    
+    pos = 'pos' if adjusted==False else 'pos_adj'
+    node_coords = nx.get_node_attributes(G, pos)    
     fig, ax = plt.subplots(figsize=(20,20))
     nx.draw(G, pos=node_coords, with_labels=False, font_color='white',  font_weight = 'bold',
-            node_size=20, node_color=node_color, edge_color=edge_color, arrowsize=10, ax=ax)
+            node_size=15, node_color=node_color, edge_color=edge_color, alpha=0.7, arrowsize=10, style=edge_style, ax=ax)
     # add legend for node color    
     inv_node_cmap = dict(zip(node_cmap.values(), node_cmap.keys()))
     for v in set(inv_node_cmap.keys()):
@@ -131,7 +147,7 @@ def get_nearest(src_points, candidates, k_neighbors=1):
     return (closest, closest_dist)
 
 
-def nearest_neighbor(left_gdf, right_gdf, right_lat_col, right_lon_col, return_dist=False):
+def nearest_neighbor(left_gdf, right_gdf, right_lat_col, right_lon_col, left_gdf_id, return_dist=False):
     """
     For each point in left_gdf, find closest point in right GeoDataFrame and return them.
     
@@ -167,10 +183,13 @@ def nearest_neighbor(left_gdf, right_gdf, right_lat_col, right_lon_col, return_d
     if return_dist:
         # Convert to meters from radians
         earth_radius = 6371000  # meters
-        closest_points['length'] = dist * earth_radius
+        closest_points['length_m'] = dist * earth_radius
     
-    #return closest_points[cols_keep].rename(columns = {'osmid': 'nn_osmid'})
-    return closest_points.drop(columns=[right_geom_col, right_lat_col, right_lon_col]).rename(columns = {'osmid': 'nn_osmid'})
+    closest_points.rename(columns = {'id': 'nn_id'}, inplace=True)
+    closest_points.insert(0, 'id', pd.Series(left_gdf.reset_index(drop=True)[left_gdf_id])) 
+    #print(closest_points)
+ 
+    return closest_points.drop(columns=[right_geom_col, right_lat_col, right_lon_col])
 
 def rename_nodes(G, prefix):
     new_nodename = [prefix + re.sub('\D', '', str(i)) for i in G.nodes]
@@ -178,47 +197,47 @@ def rename_nodes(G, prefix):
     G = nx.relabel_nodes(G, namemap, True)
     return G
 
-def add_depots_cnx_edges(gdf_depot_nodes, gdf_ref_nodes, depot_cols_keep, depot_id_prefix, 
+def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix, 
                          ref_id_prefix, cnx_edge_movement_type, num_time_intervals, G_ref, 
                          cnx_direction):
     # inputs: 
     # output: 
         
-    # get point in reference network nearest to each parking node; only keep the ID of the point of the length 
-    # of the segment connecting the parking node to its nearest neighbor
-    nn = nearest_neighbor(gdf_depot_nodes, gdf_ref_nodes, 'y', 'x', return_dist=True)[['nn_osmid', 'length']].reset_index(drop=True)
-    #cols_keep = ['ID', 'pos', 'zone', 'float_rate']
-    cols_keep = depot_cols_keep + ['nn_osmid', 'length']
-    gdf_depot_nodes = pd.concat([gdf_depot_nodes.reset_index(drop=True), nn], axis=1)[cols_keep]
-    gdf_depot_nodes['ID'] = gdf_depot_nodes.apply(lambda row: depot_id_prefix + str(int(row['ID'])), axis=1)
-
-    # build cnx edges
-    gdf_cnx_edges = gdf_depot_nodes[['ID', 'nn_osmid', 'length']]
-    #gdf_pv_parking_edges = gdf_parking_edges_clip.copy()
-    gdf_cnx_edges.loc[:,'nn_osmid'] = ref_id_prefix + gdf_cnx_edges.loc[:,'nn_osmid'].astype('int32').astype('str')
-    #gdf_cnx_edges.loc[:,'nn_osmid'] = gdf_cnx_edges.loc[:, 'nn_osmid'].apply(lambda x: ref_id_prefix + str(int(x))) #, axis=1)
+    # get point in reference network nearest to each depot node; record its id and the length of depot to id
+    nn = nearest_neighbor(gdf_depot_nodes_orig, gdf_ref_nodes, 'lat', 'long', 'id', return_dist=True).reset_index(drop=True)
+    #cols_keep = depot_cols_keep + ['nn_id', 'length_m']
+    #gdf_depot_nodes = pd.concat([gdf_depot_nodes.reset_index(drop=True), nn], axis=1)[cols_keep]
+    nn['id'] = nn.apply(lambda row: depot_id_prefix + str(int(row['id'])), axis=1)
+    nn['nn_id'] = nn.apply(lambda row: ref_id_prefix + str(int(row['nn_id'])), axis=1)
     # add cnx edge travel time for each time interval
     movement_speed = conf.config_data['Connection_Edge_Speed'][cnx_edge_movement_type]
-    cnx_attr = (gdf_cnx_edges['length'] / movement_speed / 60).rename('avg_TT_min')  # m / (m/s) / (60s/min)
+    cnx_attr = (nn['length_m'] / movement_speed / 60).rename('avg_TT_min')  # m / (m/s) / (60s/min)
     cnx_attr = pd.concat([cnx_attr] * num_time_intervals, axis=1)
     cnx_attr.columns = (['interval'+str(i) + '_' + 'avg_TT_min' for i in range(num_time_intervals)])
-    
     # these cnx edges go FROM ref network TO depot network
-    gdf_cnx_edges = pd.concat([gdf_cnx_edges, cnx_attr], axis=1)
-    gdf_cnx_edges.set_index(['nn_osmid', 'ID'], inplace=True)  # FROM ref network TO depot network
-    cnx_edge_dict = gdf_cnx_edges.to_dict(orient='index')
-    to_depot_edges = list(zip(*list(cnx_edge_dict.keys())))
-    
-    #print(to_depot_edges)
-
+    nn = pd.concat([nn, cnx_attr], axis=1)
+    nn.set_index(['nn_id', 'id'], inplace=True)  # FROM ref network TO depot network
+    cnx_edge_dict = nn.to_dict(orient='index')
     # also create edges FROM depot network TO ref network
+    to_depot_edges = list(zip(*list(cnx_edge_dict.keys())))
     from_depot_edges = list(zip(to_depot_edges[1], to_depot_edges[0]))
-    from_depot_edges_attr = dict(zip(from_depot_edges, cnx_edge_dict.values()))
+    from_depot_edges_attr = dict(zip(from_depot_edges, cnx_edge_dict.values()))    
     
+    # build cnx edges
+   # gdf_cnx_edges = gdf_depot_nodes[['id', 'nn_id', 'length']]
+    #gdf_pv_parking_edges = gdf_parking_edges_clip.copy()
+    #gdf_cnx_edges.loc[:,'nn_osmid'] = ref_id_prefix + gdf_cnx_edges.loc[:,'nn_osmid'].astype('int32').astype('str')
+   # gdf_cnx_edges.loc[:,'nn_id'] = gdf_cnx_edges.loc[:, 'nn_id'].apply(lambda x: ref_id_prefix + str(int(x))) #, axis=1)
+     
     #print(from_depot_edges)
+    
     # for node attributes
-    gdf_depot_nodes.set_index(['ID'], inplace=True)
-    node_dict = gdf_depot_nodes.drop(columns=['nn_osmid', 'length']).to_dict(orient='index')
+    gdf_depot_nodes = gdf_depot_nodes_orig.copy()
+    gdf_depot_nodes['id'] = gdf_depot_nodes.apply(lambda row: depot_id_prefix + str(int(row['id'])), axis=1)
+    gdf_depot_nodes.set_index(['id'], inplace=True)
+    gdf_depot_nodes['node_type'] = depot_id_prefix 
+    gdf_depot_nodes['nwk_type'] = ref_id_prefix
+    node_dict = gdf_depot_nodes.to_dict(orient='index') #nn.drop(columns=['nn_id', 'length_m']).to_dict(orient='index')
     
     # add edges based on user-specified direction
     if cnx_direction == 'to_depot':
@@ -246,11 +265,6 @@ def add_depots_cnx_edges(gdf_depot_nodes, gdf_ref_nodes, depot_cols_keep, depot_
         (e[0].startswith(depot_id_prefix) & e[1].startswith(ref_id_prefix)) | 
         (e[0].startswith(ref_id_prefix) & e[1].startswith(depot_id_prefix)))]
     
-    # print(all_cnx_edge_list)
-    # print('******')
-    # print(conf.config_data)
-    # print('******')
-    
     # obtain proper price parameter
     if ref_id_prefix == 'z':
         price_param = conf.config_data['Price_Params']['zip']['ppmin']
@@ -260,10 +274,11 @@ def add_depots_cnx_edges(gdf_depot_nodes, gdf_ref_nodes, depot_cols_keep, depot_
         price_param = conf.config_data['Price_Params']['bs']['ppmin']
           
     for e in all_cnx_edge_list:
+        G_ref.edges[e]['mode_type'] = ref_id_prefix   # this might be wrong, need to check
         for i in range(num_time_intervals): 
             if ref_id_prefix == 'pv':                
                 G_ref.edges[e]['interval' + str(i) + '_price'] = price_param * (
-                    G_ref.edges[e]['length'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
+                    G_ref.edges[e]['length_m'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
             else:
                 G_ref.edges[e]['interval' + str(i) + '_price'] = price_param * (
                     G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'] )
@@ -275,11 +290,13 @@ def add_depots_cnx_edges(gdf_depot_nodes, gdf_ref_nodes, depot_cols_keep, depot_
     
     return G_ref
 
+
+
 def get_coord_matrix(G):
     coords_dict = nx.get_node_attributes(G, 'pos')
-    nid_map = dict(zip(range(len(coords_dict.keys())), list(coords_dict.keys())))
-    coord_matrix = np.array(list(coords_dict.values()))
-    return (nid_map, coord_matrix)
+    # nid_map = dict(zip(range(len(coords_dict.keys())), list(coords_dict.keys())))
+    # coord_matrix = np.array(list(coords_dict.values()))
+    # return (nid_map, coord_matrix)
 
 # find the great circle distance between an input row (point) and a reference matrix (all other points)
 # GCD: https://medium.com/@petehouston/calculate-distance-of-two-locations-on-earth-using-python-1501b1944d97#:~:text=The%20Great%20Circle%20distance%20formula,that%20the%20Earth%20is%20spherical.
@@ -311,6 +328,7 @@ def mode(node_name):
 # inputs: nodeID of node interest, matrix of gc distances b/w all nodes, and max walking distance
 # output: list of nodeIDs of all nodes within the wcz
 def wcz(i, dist_matrix, W):
+    #print(dist_matrix.shape)
     catchment = np.where(dist_matrix[i] <= W)[0].tolist()
     if i in catchment:
         catchment.remove(i)  # remove self
@@ -324,12 +342,34 @@ def nn(i, dist_matrix, travel_mode, node_id_map):
     # subset dist matrix for the nodes in the component network of the travel mode of interest
     dist_subset = dist_matrix[:, nid_map_travel_mode]
     # find the node in the component network of interest that is nearest to the input node of interest
+    #print(dist_subset)
     nn_dist = np.amin(dist_subset[i])
     nn_idx = np.argmin(dist_subset[i])
     # now map back to the original node ID
     original_nn_id = nid_map_travel_mode[nn_idx]
     original_nn_name = node_id_map[original_nn_id]
     return (original_nn_id, original_nn_name, nn_dist)
+
+# attr_dict = {'avg_TT_min': 5,
+#              'price': 6,
+#              'reliability': 7,
+#              'risk': 8,
+#              'discomfort': 9}
+
+# given a dict of attributes that do not change with time, copy the value of the attribute for all time intervals
+def time_dep_attr_dict(attr_dict_static, num_time_intervals):
+    attr_dict_td = {}
+    for a in attr_dict_static.keys():
+        for i in range(num_time_intervals):
+            attr_dict_td['interval'+str(i) +'_' + a] = attr_dict_static[a]
+    return attr_dict_td
+    
+def save_object(obj, filename):
+    with open(filename, 'wb') as outp:
+        pickle.dump(obj, outp, pickle.HIGHEST_PROTOCOL)
+
+# ad_test = time_dep_attr_dict(attr_dict, 4)
+# print(ad_test)
 
 # for e in G_pb.edges:
 #     price = conf.config_data['Price_Params']['pb_ppmin'] * G_pb.edges[e]['avg_TT_min']  # op cost per edge (which is 0)

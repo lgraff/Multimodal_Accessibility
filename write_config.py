@@ -14,6 +14,10 @@ import yaml
 config_info = {
     'Geography': {
         'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North']
+                           
+                           # 'Shadyside', 'South Oakland', 'Central Oakland', 'North Oakland', 'Bloomfield', 
+                           # 'Friendship', 'Garfield',
+                           # 'East Liberty', 'Larimer', 'Point Breeze']
         },
     'Beta_Params': {
         'b_price': 1,
@@ -77,13 +81,17 @@ config_info = {
         'scoot': 1,
         'drive': 1.5,
         'bike': 1,
+        'PT_wait': 2, 
+        'PT_traversal': 1.5,
+        'TNC_wait': 2
         },
     'Discomfort_Params': {
         'walk': 1/10,
         'scoot': 1/10,
         'pb': 3/10,
         'bs': 3/10,
-        'PT': 0,
+        'PT_traversal': 0,
+        'PT_wait': 0,  # could change if thinking about cold weather conditions and waiting outside is unpleasant
         'pv': 0,
         'TNC': 0,
         'zip': 0,
@@ -91,14 +99,24 @@ config_info = {
         'bike': 3/10},
     'Risk_Parameters': {
         'risk_weight_active': 1.2,
-        'crash_weight': 5
+        'crash_weight': 5,
+        'PT_traversal': 1,
+        'PT_wait': 0.5  # a nonzero parameter is meant to indicate the risk associated with waiting idly at a bus stop
         },
     'Connection_Edge_Speed': {
         'drive': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
         'bike': 15 / 3600 * 1000    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
         },
+    'Scoot_Data_Generation': {
+        'num_days_of_data': 30,
+        'num_obs': 100
+        },
     'Supernetwork': {
-        'modes_included': ['bsd', 'z', 'sc', 't', 'pt', 'pb']}
+        'modes_included': ['bs', 'z', 'sc', 't', 'pt'],
+        'W_tx': 0.5,  # miles,
+        'W_od': 1.0  # miles
+        }  #, 'pb']}
+    
     }
 
 # Write the config file

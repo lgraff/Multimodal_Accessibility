@@ -55,9 +55,10 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
     G_pt = nx.DiGraph()
     G_pt.add_nodes_from(list(stopnode_dict.keys()))
     nx.set_node_attributes(G_pt, stopnode_dict)  
-    nx.set_node_attributes(G_pt, 'ps', 'nwk_type')  
+    nx.set_node_attributes(G_pt, 'ps', 'node_type') 
+    nx.set_node_attributes(G_pt, 'pt', 'nwk_type') 
 
-    ax = ut.draw_graph(G_pt, 'blue', {'phsyical stop': 'blue'}, 'grey')  # checks out
+    #ax = ut.draw_graph(G_pt, 'blue', {'phsyical stop': 'blue'}, 'grey', 'solid')  # checks out
 
     # Convert to gdf, but don't clip to study area. Might be the case where the stops on a route go outside the study
     # area but then come back into the study area. If we remove the stops outside the study area, bus route will be
@@ -123,14 +124,26 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
                 num_intervals)], num_intervals * [trav_time_sec/60]))
             price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(
                 num_intervals)], num_intervals * [0]))
+            
+            # add reliability, risk, and discomfort 
+            reliability_attr = dict([('interval'+str(i)+'_reliability', 
+                                 conf.config_data['Reliability_Params']['PT_traversal']*t
+                                 ) for i,t in enumerate(TT_attr.values())])
+            risk_attr = dict([('interval'+str(i)+'_risk', 
+                          conf.config_data['Risk_Parameters']['PT_traversal']*t
+                                 ) for i,t in enumerate(TT_attr.values())])
+            discomf_attr = dict([('interval'+str(i)+'_discomfort', 
+                                 conf.config_data['Discomfort_Params']['PT_traversal']*t
+                                 ) for i,t in enumerate(TT_attr.values())])
 
-            route_edges_attr.append((e[0], e[1], TT_attr | price_attr))  # | is an operator for merging dicts
+            route_edges_attr.append((e[0], e[1], TT_attr | price_attr | reliability_attr | risk_attr | discomf_attr))  
+            # | is an operator for merging dicts
         # add route edges to the PT graph, along with attriutes
         G_pt.add_edges_from(route_edges_attr)
 
     nx.set_edge_attributes(G_pt, "pt", 'mode_type')
     nx.set_node_attributes(G_pt, route_node_dict)
-    nx.set_node_attributes(G_pt, {r: {'nwk_type':'rt'} for r in route_node_dict.keys()}) 
+    nx.set_node_attributes(G_pt, {r: {'nwk_type':'pt', 'node_type':'rt'} for r in route_node_dict.keys()}) 
     #nx.set_node_attributes(G_rt, 'rt', 'nwk_type')
 
         # add boarding and alighting edges. avg_TT_min is the waiting time
@@ -138,7 +151,7 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
         
     ba_edges = []
     for n in list(G_pt.nodes):
-        if n.startswith('rt'):   # is a route node
+        if G_pt.nodes[n]['node_type'] == 'rt':  #if n.startswith('rt'):   # is a route node
             # Find associated physical stop
             split_route_node = n.split('_')
             phys_stop = 'ps' + split_route_node[0].split('rt')[1]
@@ -162,25 +175,43 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
                 num_intervals)], num_intervals * [headway_min/2]))  # avg wait time is defined as headway/2
             price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(
                 num_intervals)], num_intervals * [conf.config_data['Price_Params']['PT']['fixed']]))
-            #'reliability': rel_weights('pt') * headway_min/2, 'risk_idx':0, 'risk': 0,
+            # add reliability, risk, and discomfort 
+            reliability_attr = dict([('interval'+str(i)+'_reliability', 
+                                 conf.config_data['Reliability_Params']['PT_wait']*t
+                                 ) for i,t in enumerate(TT_attr.values())])
+            risk_attr = dict([('interval'+str(i)+'_risk', conf.config_data['Risk_Parameters']['PT_wait']*t
+                                 ) for i,t in enumerate(TT_attr.values())])
+            discomf_attr = dict([('interval'+str(i)+'_discomfort', 
+                                 conf.config_data['Discomfort_Params']['PT_wait']*t 
+                                 ) for i,t in enumerate(TT_attr.values())])  # the PT_wait time param is 0 for now
             #'mode_type':'board'}  # observe no risk
-            ba_edges.append((e_board[0], e_board[1], TT_attr | price_attr))
+            ba_edges.append((e_board[0], e_board[1], 
+                             TT_attr | price_attr | reliability_attr | risk_attr | discomf_attr | {'mode_type':'board'}))
 
             # ALIGHTING edges
             e_alight = (n, phys_stop)
             # alighting edge has price = 0 and TT = 0 ?
             # note: we will need to use the node cost file to remove 2.75 when going rt-ps-ps-rt
+            # for now, everything is 0
             TT_attr = dict(zip(['interval'+str(i)+'_avg_TT_min' for i in range(
                 num_intervals)], num_intervals * [0]))
             price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(
                 num_intervals)], num_intervals * [0]))
-            ba_edges.append((e_alight[0], e_alight[1], TT_attr | price_attr))
+            reliability_attr = dict(zip(['interval'+str(i)+'_reliability' for i in range(
+                num_intervals)], num_intervals * [0]))
+            risk_attr = dict(zip(['interval'+str(i)+'_risk' for i in range(
+                num_intervals)], num_intervals * [0]))
+            discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(
+                num_intervals)], num_intervals * [0]))
+
+            ba_edges.append((e_alight[0], e_alight[1], 
+                             TT_attr | price_attr | reliability_attr | risk_attr | discomf_attr | {'mode_type':'alight'}))
 
     G_pt.add_edges_from(ba_edges)  # add board/alight edges to the graph
 
     # offset the geometry of the route nodes, for visualization purposes
     for n in G_pt.nodes:
-        if n.startswith('rt'):
+        if G_pt.nodes[n]['node_type'] == 'rt': #n.startswith('rt'):
             G_pt.nodes[n]['pos'] = (
                 G_pt.nodes[n]['pos'][0] + 0.001, G_pt.nodes[n]['pos'][1] + 0.001)
             

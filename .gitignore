@@ -1,0 +1,11 @@
+# Ignore Data folder
+Data
+
+# Ignore the cache folder
+cache
+
+# Ignore pycache folder
+__pycache__
+
+# Ignore some testing files
+build_supernetwork000.py
