@@ -34,7 +34,7 @@ def od_cnx(G_od, o_coord, d_coord):
     num_days_of_data = conf.config_data['Scoot_Data_Generation']['num_days_of_data']
     num_obs = conf.config_data['Scoot_Data_Generation']['num_obs']
     num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
-    sc_costs = gen_data(G_od, num_days_of_data, num_intervals, num_obs, conf.bbox_study_area, od_cnx=True)
+    sc_costs = gen_data(G_od, num_days_of_data, num_intervals, num_obs, od_cnx=True) # conf.bbox_study_area, )
     
     # then build o/d connectors
     od_cnx_edges = {}

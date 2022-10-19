@@ -1,9 +1,9 @@
 Beta_Params:
   b_TT: 0.16666666666666666
-  b_disc_weight: 0.5
+  b_disc: 0.5
   b_price: 1
-  b_rel_weight: 0.75
-  b_risk_weight: 1
+  b_rel: 0.75
+  b_risk: 1
 Connection_Edge_Speed:
   bike: 4.166666666666667
   drive: 2.2347222222222225

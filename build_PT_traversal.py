@@ -38,11 +38,18 @@ trips_stoptimes = pd.merge(trips, feed.stop_times, on='trip_id', how='inner')[
     ['trip_id', 'route_id','direction_id','stop_sequence','stop_id','departure_time']]
 trips_stoptimes = trips_stoptimes.sort_values(by='trip_id').groupby(
     by=['route_id', 'direction_id', 'stop_sequence']).first().reset_index()
+
+# drop duplicates by route_id, direction_id, and stop_id triple i.e. focus on one trip
+trips_stoptimes = trips_stoptimes.sort_values(by=['route_id', 'direction_id', 'stop_id', 'departure_time'], ascending=True)
+trips_stoptimes.drop_duplicates(subset=['route_id','direction_id','stop_id'], inplace=True)
+
 # trips_stoptimes = trips_stoptimes.sort_values(by='trip_id').groupby(
 #     by=['route_id', 'direction_id', 'stop_sequence']).first().reset_index()
 trips_stoptimes.sort_values(by=['route_id', 'direction_id', 'stop_sequence'], ascending=True, inplace=True)
 
-traversal_time_sec = trips_stoptimes.groupby(['route_id', 'direction_id'])['departure_time'].diff()  # minutes
+
+
+traversal_time_sec = trips_stoptimes.groupby(['route_id', 'direction_id', 'trip_id'])['departure_time'].diff()  # minutes
 trips_stoptimes['traversal_time_sec'] = traversal_time_sec
 
 trips_stoptimes.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))            

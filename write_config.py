@@ -22,9 +22,9 @@ config_info = {
     'Beta_Params': {
         'b_price': 1,
         'b_TT': 10/60,
-        'b_risk_weight': 1,
-        'b_disc_weight': 0.5,
-        'b_rel_weight': 0.75
+        'b_risk': 1,
+        'b_disc': 0.5,
+        'b_rel': 0.75
         },  # ultimately need b_rel_weight * b_TT
     'Speed_Params': {
         'walk': 1.3,  # m/s

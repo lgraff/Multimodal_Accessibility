@@ -26,6 +26,11 @@ import util_functions as ut
 # filepath = os.path.join(cwd, 'Data', 'Output_Data')
 # study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
 
+cwd = os.getcwd()
+GTFS_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'GTFS')
+headway_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv')
+traversal_time_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv')
+
 def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
 
     num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
@@ -218,6 +223,3 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
     return G_pt
 
 #%% test the function
-# G_pt = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
-#                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'), 
-#                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))

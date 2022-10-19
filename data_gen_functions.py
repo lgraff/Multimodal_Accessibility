@@ -16,8 +16,9 @@ import config as conf
 # inputs: graph, num of days of historical data, num of time intervals, num of scooter obs per time-interval day lower bound
 # and upper bound, lower and upper bound of potential (x,y) coordinate of scooter, node id map, some cost parameters
 # output: dict of dicts
-def gen_data(G_superntwk, n_days, n_intervals, n_obs, bbox, od_cnx=False): #, avg_bike_segment_length):  
+def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike_segment_length):  
     # define the bounds
+    bbox = conf.study_area_gdf.bounds.iloc[0]
     xlb, xub, ylb, yub = bbox['minx'], bbox['maxx'], bbox['miny'], bbox['maxy']
     
     if not od_cnx:

@@ -30,7 +30,8 @@ from bikeshare_graph import build_bikeshare_graph
 #config_data = load_config('config.yaml')
     
 # # read study area file
-study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+#study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+study_area_gdf = conf.study_area_gdf
 
 # conf.study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
 # read graphs that were created in 'process_street_centerlines.py'

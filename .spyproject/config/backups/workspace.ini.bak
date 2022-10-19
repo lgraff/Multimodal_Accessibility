@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['process_street_centerlines.py', 'build_street_network.py', 'util_functions.py', 'parking_nodes.py', 'build_unimodal_graphs.py', 'bikeshare_graph.py']
+recent_files = ['util_functions.py', 'build_unimodal_graphs.py', 'main.py', 'build_supernetwork.py', 'data_gen_functions.py']
 
 [main]
 version = 0.2.0

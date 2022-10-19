@@ -10,6 +10,7 @@ Created on Thu Sep 22 11:51:25 2022
 import util_functions as ut
 import networkx as nx 
 import numpy as np
+import pickle
 from data_gen_functions import gen_data
 import config as conf
 
@@ -18,12 +19,16 @@ import config as conf
 
 #%%
 class Supernetwork:
-    def __init__(self, graphs_included, fix_pre, flex_pre):
-        self.networks = graphs_included
-        self.graph = nx.union_all(graphs_included)
+    def __init__(self, unimodal_graphs, fix_pre, flex_pre):
+        self.networks = unimodal_graphs
+        self.graph = nx.union_all(unimodal_graphs)
         self.fix_pre = fix_pre  # which modes are fixed in the supernetwork
         self.flex_pre = flex_pre   # which modes are flex in the supernewtork
     
+    def save_object(self, filename):
+        with open(filename, 'wb') as outp:
+            pickle.dump(self, outp, pickle.HIGHEST_PROTOCOL)
+            
     # print the graphs that are incuded in the network
     def print_mode_types(self):
         print(self.networks)
@@ -63,7 +68,7 @@ class Supernetwork:
         num_days_of_data = conf.config_data['Scoot_Data_Generation']['num_days_of_data']
         num_obs = conf.config_data['Scoot_Data_Generation']['num_obs']
         num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
-        sc_costs = gen_data(self, num_days_of_data, num_intervals, num_obs, conf.bbox_study_area)
+        sc_costs = gen_data(self, num_days_of_data, num_intervals, num_obs) #, conf.bbox_study_area)
         
         # then build transfer edges
         etype = 'transfer'
