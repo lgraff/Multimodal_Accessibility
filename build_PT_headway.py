@@ -75,7 +75,7 @@ for r in all_routes:
                     & (feed.stop_times.stop_id == s)
                     ].sort_values('arrival_time')
                 # time difference between arrivals of consecutive trips for the given route-dir pair
-                headway_seconds = stimes.arrival_time[1:].values - stimes.arrival_time[:-1].values
+                headway_seconds = stimes.arrival_time.iloc[1:].values - stimes.arrival_time.iloc[:-1].values
                 headway_minutes = (headway_seconds / 60.).round(1)  # .astype(int)
                 
                 if len(stimes) > 1:  # 1) multiple trips in the interval, can calc headway between them
@@ -88,7 +88,8 @@ for r in all_routes:
             
 df_headway = pd.DataFrame(df_headway_rows, columns=['route_id', 'direction_id', 'stop_id', 'headway_min'])
 df_headway.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'))     
-       
+
+'''
 #%% should not be any null values; check what's going on
 null_mask = df_headway.headway_min.isnull().values
 # # minutes
@@ -148,6 +149,7 @@ dfy46 = pd.DataFrame(df_headway_test_rows, columns=['route_id', 'direction_id', 
                                                    ]).sort_values(by='stop_id')
 #%%
 
+
 #%% Compare old and new 
 df_new = pd.read_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'))
 df_old = pd.read_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_OLD.csv'))
@@ -185,4 +187,6 @@ trips_stoptimes.sort_values(by=['route_id', 'direction_id', 'trip_id', 'stop_seq
 traversal_time_sec = trips_stoptimes.groupby(['route_id', 'direction_id'])['departure_time'].diff()  # minutes
 trips_stoptimes['traversal_time_sec'] = traversal_time_sec
 
-trips_stoptimes.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))            
+trips_stoptimes.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))  
+'''    
+      
