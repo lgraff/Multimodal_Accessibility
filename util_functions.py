@@ -95,15 +95,15 @@ def flatten_proj(gdfs, crs):
 #     return risk_idx
 
 def calc_bike_risk_index(row):
-    risk_mapping = {'Protected Bike Lane':1, 'Bike Lanes':1.05, 'On Street Bike Route':1.2, 
-                     'Cautionary Bike Route':1.3, 'Bikeable_Sidewalks':1.05, 'None':10000}
+    risk_mapping = {'Protected Bike Lane':1, 'Bike Lanes':1.1, 'On Street Bike Route':1.2, 
+                     'Cautionary Bike Route':1.3, 'Bikeable_Sidewalks':1.1, 'None':10000}
     risk_idx = risk_mapping[row['bikeway_type']]
     if (row['bikeway_type'] == 'None') & (row['speed_lim'] <= 15):
         risk_idx = 1
     elif (row['bikeway_type'] == 'None') & (15 < row['speed_lim'] <= 25):
         risk_idx = 1.1
     elif (row['bikeway_type'] == 'None') & (25 < row['speed_lim'] <= 35):
-        risk_idx = 1.3 
+        risk_idx = 1.4 
     elif (row['bikeway_type'] == 'None') & (row['speed_lim'] > 35):
         risk_idx = 10000
     return risk_idx
@@ -284,13 +284,11 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
                     G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'] )
             G_ref.edges[e]['interval' + str(i) + '_reliability'] = (conf.config_data['Reliability_Params'][cnx_edge_movement_type] *
                                                                     G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
-            G_ref.edges[e]['interval' + str(i) + '_risk'] =  G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
-            G_ref.edges[e]['interval' + str(i) + '_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type] * 
-                                                                   G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
+            G_ref.edges[e]['interval' + str(i) + '_risk'] =  conf.config_data['Risk_Parameters'][cnx_edge_movement_type] #G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
+            G_ref.edges[e]['interval' + str(i) + '_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type])
+                                                                   #* G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
     
     return G_ref
-
-
 
 def get_coord_matrix(G):
     coords_dict = nx.get_node_attributes(G, 'pos')
