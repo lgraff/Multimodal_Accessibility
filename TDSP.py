@@ -56,7 +56,7 @@ def TDSP(graph_filepath, timestamp, beta_risk):
     df_G['source'] = df_G['source'].map(inv_nid_map)
     df_G['target'] = df_G['target'].map(inv_nid_map)
 
-
+    # *****************
     # add cost of parking to zipcar:
     # **THIS IS SOMETHING TO MOVE TO THE SECTION OF BUILDING UNIMODAL GRAPHS**
     park_hours = 2
@@ -67,7 +67,7 @@ def TDSP(graph_filepath, timestamp, beta_risk):
         # add park_hours * (parking_rate per hour + zip cost per hour) to each cost
         for i in range(num_intervals):
             df_linkcost.at[index, 'interval' + str(i) + '_cost'] += park_hours * (parking_rate + conf.config_data['Price_Params']['zip']['ppmin']*60)
-       
+    # *****************
 
     df_linkcost = df_linkcost.copy()
     df_linkcost['source'] = df_linkcost['source'].map(inv_nid_map)
@@ -205,6 +205,7 @@ def TDSP(graph_filepath, timestamp, beta_risk):
 
     return(path, cost, TT)
 
+# conduct sensitivity analysis by varying risk parameter over some range 
 cwd = os.getcwd()
 travel_times = []
 for r in np.arange(0,1,0.33):
