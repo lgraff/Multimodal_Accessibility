@@ -46,9 +46,11 @@ class Supernetwork:
     # add the matrix that contains the great circle distance between all pairs of nodes
     def add_gcd_dist_matrix(self):
         # gcd distance matrix: gcd_dist[i,j] is the great circle distance from node i to node j
-        gcd_dist = np.empty([len(self.nid_map), len(self.nid_map)])  # great circle dist in meters 
+        gcd_dist = np.empty([len(self.nid_map), len(self.nid_map)], dtype='float16')  # great circle dist in meters 
         for i in range(gcd_dist.shape[0]):
             dist_to_all_nodes = ut.calc_great_circle_dist(self.coord_matrix[i], self.coord_matrix)  # calc distance from node i to all other nodes
+	    #transfer_acceptable = dist_to_all_nodes <= conf.config_data['Supernetwork']['W_tx']
+	    #transfer_acceptable = transfer_acceptable.astype('int')
             gcd_dist[i] = dist_to_all_nodes  # calc_great_circle_dist is a function defined above 
         self.gcd_dist = gcd_dist
         #return gcd_dist

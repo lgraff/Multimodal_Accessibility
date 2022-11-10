@@ -22,9 +22,9 @@ config_info = {
     'Beta_Params': {
         'b_price': 1,
         'b_TT': 10/60,
-        'b_risk': 1,
-        'b_disc': 0.5,
-        'b_rel': 0.75
+        'b_risk': 0.1,
+        'b_disc': 0.1,
+        'b_rel': 0.1
         },  # ultimately need b_rel_weight * b_TT
     'Speed_Params': {
         'walk': 1.3,  # m/s
@@ -86,22 +86,28 @@ config_info = {
         'TNC_wait': 2
         },
     'Discomfort_Params': {
-        'walk': 1/10,
-        'scoot': 1/10,
-        'pb': 3/10,
-        'bs': 3/10,
-        'PT_traversal': 0,
-        'PT_wait': 0,  # could change if thinking about cold weather conditions and waiting outside is unpleasant
-        'pv': 0,
-        'TNC': 0,
-        'zip': 0,
-        'drive': 0,
-        'bike': 3/10},
+        'walk': 1.1,
+        'scoot': 1.1,
+        'pb': 1.3,
+        'bs': 1.3,
+        'PT_traversal': 1.1,
+        'PT_wait': 1.1,  # could change if thinking about cold weather conditions and waiting outside is unpleasant
+        'pv': 1,
+        'TNC': 1,
+        'zip': 1
+        },
     'Risk_Parameters': {
-        'risk_weight_active': 1.2,
-        'crash_weight': 5,
+        'walk': 1.05,
+        'scoot': 1.1,
+        'pb': 1.1,
+        'bs': 1.1,
         'PT_traversal': 1,
-        'PT_wait': 0.5  # a nonzero parameter is meant to indicate the risk associated with waiting idly at a bus stop
+        'PT_wait': 1,  # a nonzero parameter is meant to indicate the risk associated with waiting idly at a bus stop
+        'pv': 1,
+        'TNC': 1,
+        'zip': 1,
+        #'risk_weight_active': 1.2,
+        'crash_weight': 5
         },
     'Connection_Edge_Speed': {
         'drive': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
@@ -114,7 +120,9 @@ config_info = {
     'Supernetwork': {
         'modes_included': ['bs', 'z', 'sc', 't', 'pt'],
         'W_tx': 0.5,  # miles,
-        'W_od': 1.0  # miles
+        'W_od': 1.0,  # miles
+	'org': [-79.94868171046522, 40.416379503934145],
+	'dst': [-79.91944888168011, 40.45228774674678]
         }  #, 'pb']}
     
     }

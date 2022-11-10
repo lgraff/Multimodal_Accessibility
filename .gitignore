@@ -1,11 +1,33 @@
 # Ignore Data folder
-Data
+Data/
+
+# Ignore SP and images folders
+images/
+sp_strings/
 
 # Ignore the cache folder
-cache
+cache/
 
 # Ignore pycache folder
-__pycache__
+__pycache__/
 
 # Ignore some testing files
 build_supernetwork000.py
+buildPTgraph.py
+build_super_OD.py
+main.py
+main.ipynb
+main_testing.py
+testing_unimodal.ipynb
+visualization_SP.py
+
+# Ignore files produced by MAC-POSTS
+td_link_cost
+td_link_tt
+td_node_cost
+td_node_tt
+graph
+config.conf
+
+# Ignore jupyter notebook checkpoints
+.ipynb_checkpoints/

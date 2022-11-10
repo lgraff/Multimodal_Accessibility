@@ -7,6 +7,8 @@ Created on Tue Sep 13 16:13:44 2022
 """
 
 # libraries and c
+import geopandas as gpd
+import os
 import numpy as np
 import util_functions as ut
 import config as conf
@@ -18,7 +20,9 @@ import config as conf
 # output: dict of dicts
 def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike_segment_length):  
     # define the bounds
-    bbox = conf.study_area_gdf.bounds.iloc[0]
+
+    study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+    bbox = study_area_gdf.bounds.iloc[0]
     xlb, xub, ylb, yub = bbox['minx'], bbox['maxx'], bbox['miny'], bbox['maxy']
     
     if not od_cnx:

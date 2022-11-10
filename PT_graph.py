@@ -135,10 +135,10 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
                                  conf.config_data['Reliability_Params']['PT_traversal']*t
                                  ) for i,t in enumerate(TT_attr.values())])
             risk_attr = dict([('interval'+str(i)+'_risk', 
-                          conf.config_data['Risk_Parameters']['PT_traversal']*t
+                          conf.config_data['Risk_Parameters']['PT_traversal']#*t  remove dependence on TT
                                  ) for i,t in enumerate(TT_attr.values())])
             discomf_attr = dict([('interval'+str(i)+'_discomfort', 
-                                 conf.config_data['Discomfort_Params']['PT_traversal']*t
+                                 conf.config_data['Discomfort_Params']['PT_traversal']#*t  remove dependence on TT
                                  ) for i,t in enumerate(TT_attr.values())])
 
             route_edges_attr.append((e[0], e[1], TT_attr | price_attr | reliability_attr | risk_attr | discomf_attr))  
@@ -184,10 +184,10 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
             reliability_attr = dict([('interval'+str(i)+'_reliability', 
                                  conf.config_data['Reliability_Params']['PT_wait']*t
                                  ) for i,t in enumerate(TT_attr.values())])
-            risk_attr = dict([('interval'+str(i)+'_risk', conf.config_data['Risk_Parameters']['PT_wait']*t
+            risk_attr = dict([('interval'+str(i)+'_risk', conf.config_data['Risk_Parameters']['PT_wait'] #*t
                                  ) for i,t in enumerate(TT_attr.values())])
             discomf_attr = dict([('interval'+str(i)+'_discomfort', 
-                                 conf.config_data['Discomfort_Params']['PT_wait']*t 
+                                 conf.config_data['Discomfort_Params']['PT_wait'] #*t 
                                  ) for i,t in enumerate(TT_attr.values())])  # the PT_wait time param is 0 for now
             #'mode_type':'board'}  # observe no risk
             ba_edges.append((e_board[0], e_board[1], 

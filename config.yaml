@@ -1,9 +1,9 @@
 Beta_Params:
   b_TT: 0.16666666666666666
-  b_disc: 0.5
+  b_disc: 0.1
   b_price: 1
-  b_rel: 0.75
-  b_risk: 1
+  b_rel: 0.1
+  b_risk: 0.1
 Connection_Edge_Speed:
   bike: 4.166666666666667
   drive: 2.2347222222222225
@@ -78,12 +78,18 @@ Speed_Params:
 Supernetwork:
   W_od: 1.0
   W_tx: 0.5
+  dst:
+  - -79.91944888168011
+  - 40.45228774674678
   modes_included:
   - bs
   - z
   - sc
   - t
   - pt
+  org:
+  - -79.94868171046522
+  - 40.416379503934145
 Time_Intervals:
   interval_spacing: 10
   len_period: 120
