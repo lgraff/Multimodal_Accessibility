@@ -58,9 +58,6 @@ def build_supernetwork(output_fpath):
     #cwd = os.getcwd()
     #ut.save_object(G_super, os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'))
 
-# test the function
-cwd = os.getcwd()
-
-
 #%% build supernetwork, also save as pickled object for later use if necessary (avoid compiling it many times)
+cwd = os.getcwd()
 G_super = build_supernetwork(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl')) 

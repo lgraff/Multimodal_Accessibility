@@ -67,7 +67,7 @@ for i in range(num_intervals):
                                                                   G_drive.edges[e]['speed_lim'] * 60 * y[i])
         # reliability
         # (maybe: also evaluate road type i.e. residential roads may not have high reliability mult)
-        G_drive.edges[e]['interval' + str(i) + '_reliability'] = conf.config_data['Reliability_Params']['drive'] * G_drive.edges[e]['interval' + str(i) + '_avg_TT_min']
+        G_drive.edges[e]['interval' + str(i) + '_reliability'] = conf.config_data['Reliability_Params']['pv'] * G_drive.edges[e]['interval' + str(i) + '_avg_TT_min']
         # risk: remove TT dependence
         G_drive.edges[e]['interval' + str(i) + '_risk'] = G_drive.edges[e]['risk_idx_drive'] #* G_drive.edges[e]['interval' + str(i) + '_avg_TT_min']
     
@@ -78,7 +78,7 @@ for i in range(num_intervals):
                                                                   conf.config_data['Speed_Params']['bike'] / 60)
         # reliability
         # (maybe: also evaluate road type i.e. residential roads may not have high reliability mult)
-        G_bike.edges[e]['interval' + str(i) + '_reliability'] = conf.config_data['Reliability_Params']['bike'] * G_bike.edges[e]['interval' + str(i) + '_avg_TT_min']
+        G_bike.edges[e]['interval' + str(i) + '_reliability'] = conf.config_data['Reliability_Params']['pb'] * G_bike.edges[e]['interval' + str(i) + '_avg_TT_min']
         # risk: remove TT dependence
         G_bike.edges[e]['interval' + str(i) + '_risk'] = G_bike.edges[e]['risk_idx_bike'] #* G_bike.edges[e]['interval' + str(i) + '_avg_TT_min']
 

@@ -15,7 +15,7 @@ import MNMAPI
 
 #os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl')
 
-def TDSP(graph_filepath, timestamp, beta_risk):
+def TDSP(graph_filepath, timestamp, beta_price):
     # read pickled supernetwork, complete with transfer edges and od cnx
     cwd = os.getcwd()
     with open(graph_filepath, 'rb') as inp:
@@ -38,10 +38,10 @@ def TDSP(graph_filepath, timestamp, beta_risk):
     for i in range(num_intervals):
         df_link['interval'+str(i)+'_' + 'cost'] = (betas['b_TT'] * df_link['interval'+str(i)+'_' + 'avg_TT_min']
                                                    + betas['b_disc'] * df_link['interval'+str(i)+'_' + 'discomfort']
-                                                   + betas['b_price'] * df_link['interval'+str(i)+'_' + 'price']
+                                                   + beta_price * df_link['interval'+str(i)+'_' + 'price']
                                                    + betas['b_rel'] * df_link['interval'+str(i)+'_' + 'reliability']
-                                                   + beta_risk * df_link['interval'+str(i)+'_' + 'risk'])
-#                                                   + betas['b_risk'] * df_link['interval'+str(i)+'_' + 'risk'])
+                                                   #+ beta_risk * df_link['interval'+str(i)+'_' + 'risk'])
+                                                   + betas['b_risk'] * df_link['interval'+str(i)+'_' + 'risk'])
     cost_cols = ['interval'+str(i)+'_' + 'cost' for i in range(num_intervals)]
     df_linkcost = df_link[['source','target'] + cost_cols]
     # add link id
@@ -208,7 +208,7 @@ def TDSP(graph_filepath, timestamp, beta_risk):
 # conduct sensitivity analysis by varying risk parameter over some range 
 cwd = os.getcwd()
 travel_times = []
-for r in np.arange(0,1,0.33):
+for r in np.arange(0,1,0.25):
     path, cost, TT = TDSP(os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl'), 6, r)
     travel_times.append(TT)
 print(travel_times)

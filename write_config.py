@@ -79,11 +79,14 @@ config_info = {
     'Reliability_Params': {
         'walk': 1,
         'scoot': 1,
-        'drive': 1.5,
-        'bike': 1,
+        'pv': 1.5,
+	'pb': 1,
+        'bs': 1,
         'PT_wait': 2, 
         'PT_traversal': 1.5,
-        'TNC_wait': 2
+	'TNC': 1.5,
+        'TNC_wait': 2,
+	'zip': 1.5
         },
     'Discomfort_Params': {
         'walk': 1.1,
@@ -110,8 +113,9 @@ config_info = {
         'crash_weight': 5
         },
     'Connection_Edge_Speed': {
-        'drive': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
-        'bike': 15 / 3600 * 1000    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+        'pv': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
+        'bs': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+	'zip': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
         },
     'Scoot_Data_Generation': {
         'num_days_of_data': 30,

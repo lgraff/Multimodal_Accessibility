@@ -5,23 +5,22 @@ Beta_Params:
   b_rel: 0.1
   b_risk: 0.1
 Connection_Edge_Speed:
-  bike: 4.166666666666667
-  drive: 2.2347222222222225
+  bs: 4.166666666666667
+  pv: 2.2347222222222225
+  zip: 2.2347222222222225
 Conversion_Factors:
   meters_in_mile: 1609
   miles_in_km: 0.621371
 Discomfort_Params:
-  PT_traversal: 0
-  PT_wait: 0
-  TNC: 0
-  bike: 0.3
-  bs: 0.3
-  drive: 0
-  pb: 0.3
-  pv: 0
-  scoot: 0.1
-  walk: 0.1
-  zip: 0
+  PT_traversal: 1.1
+  PT_wait: 1.1
+  TNC: 1
+  bs: 1.3
+  pb: 1.3
+  pv: 1
+  scoot: 1.1
+  walk: 1.1
+  zip: 1
 Geography:
   neighborhoods:
   - Hazelwood
@@ -56,16 +55,25 @@ Price_Params:
 Reliability_Params:
   PT_traversal: 1.5
   PT_wait: 2
+  TNC: 1.5
   TNC_wait: 2
-  bike: 1
-  drive: 1.5
+  bs: 1
+  pb: 1
+  pv: 1.5
   scoot: 1
   walk: 1
+  zip: 1.5
 Risk_Parameters:
   PT_traversal: 1
-  PT_wait: 0.5
+  PT_wait: 1
+  TNC: 1
+  bs: 1.1
   crash_weight: 5
-  risk_weight_active: 1.2
+  pb: 1.1
+  pv: 1
+  scoot: 1.1
+  walk: 1.05
+  zip: 1
 Scoot_Data_Generation:
   num_days_of_data: 30
   num_obs: 100
