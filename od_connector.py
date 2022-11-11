@@ -16,7 +16,6 @@ import util_functions as ut
 import config as conf
 from data_gen_functions import gen_data
 
-
 # test od coord
 
 # this function builds OD connectors on the fly
@@ -27,7 +26,7 @@ from data_gen_functions import gen_data
 # note that there are some exceptions: 
 # 1) org connects to flex PV;  2) org does not connect to fixed parking;  3) dst does not connect to flex PV
 # 4) dst connects to fixed parking;  5) dst does not connect to fixed zip depot
-def od_cnx(G_super_filepath, G_od_filepath, o_coord, d_coord):
+def od_cnx(G_super_filepath, o_coord, d_coord):
     #cwd = os.getcwd()
     #with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'), 'rb') as inp:
      #   G_super = pickle.load(inp)
@@ -208,7 +207,8 @@ def od_cnx(G_super_filepath, G_od_filepath, o_coord, d_coord):
                                         | {'type':'od_cnx'})       
     od_cnx_edges = [(e[0], e[1], od_cnx_edges[e])for e in od_cnx_edges.keys()] # convert od_cnx_edges to proper form so that they can be added to graph
     G_super.graph.add_edges_from(od_cnx_edges)
+    return G_super
     # then save the object
-    G_super.save_object(G_od_filepath) #os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl'))
+    #G_super.save_object(G_od_filepath) #os.path.join(cwd, 'Data', 'Output_Data', #'G_super_od.pkl'))
 
 

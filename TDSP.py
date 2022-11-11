@@ -12,14 +12,18 @@ import re
 import numpy as np
 import pickle
 import MNMAPI
+from od_connector import od_cnx
+
+import warnings
+warnings.filterwarnings('ignore')
 
 #os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl')
 
-def TDSP(graph_filepath, timestamp, beta_price):
+def TDSP(G_super, timestamp, beta_rel):
     # read pickled supernetwork, complete with transfer edges and od cnx
-    cwd = os.getcwd()
-    with open(graph_filepath, 'rb') as inp:
-        G_super = pickle.load(inp)
+    #cwd = os.getcwd()
+    #with open(graph_filepath, 'rb') as inp:
+     #   G_super = pickle.load(inp)
     # also adjust the inverse nidmap
     inv_nid_map = dict(zip(G_super.nid_map.values(), G_super.nid_map.keys()))   
 
@@ -38,8 +42,8 @@ def TDSP(graph_filepath, timestamp, beta_price):
     for i in range(num_intervals):
         df_link['interval'+str(i)+'_' + 'cost'] = (betas['b_TT'] * df_link['interval'+str(i)+'_' + 'avg_TT_min']
                                                    + betas['b_disc'] * df_link['interval'+str(i)+'_' + 'discomfort']
-                                                   + beta_price * df_link['interval'+str(i)+'_' + 'price']
-                                                   + betas['b_rel'] * df_link['interval'+str(i)+'_' + 'reliability']
+                                                   + betas['b_price'] * df_link['interval'+str(i)+'_' + 'price']
+                                                   + beta_rel * df_link['interval'+str(i)+'_' + 'reliability']
                                                    #+ beta_risk * df_link['interval'+str(i)+'_' + 'risk'])
                                                    + betas['b_risk'] * df_link['interval'+str(i)+'_' + 'risk'])
     cost_cols = ['interval'+str(i)+'_' + 'cost' for i in range(num_intervals)]
@@ -207,9 +211,17 @@ def TDSP(graph_filepath, timestamp, beta_price):
 
 # conduct sensitivity analysis by varying risk parameter over some range 
 cwd = os.getcwd()
+
+# compile supernetwork with od-connectors
+# take the supernetwork as input, then output the supernetwork with od connectors
+cwd = os.getcwd()
+G_super_od = od_cnx(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'),
+       		conf.config_data['Supernetwork']['org'],
+       		conf.config_data['Supernetwork']['dst'])
+
 travel_times = []
-for r in np.arange(0,1,0.25):
-    path, cost, TT = TDSP(os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl'), 6, r)
+for r in np.arange(0,30/60,5/60):
+    path, cost, TT = TDSP(G_super_od, 1, r)
     travel_times.append(TT)
 print(travel_times)
 

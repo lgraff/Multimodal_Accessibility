@@ -22,9 +22,9 @@ config_info = {
     'Beta_Params': {
         'b_price': 1,
         'b_TT': 10/60,
-        'b_risk': 0.1,
-        'b_disc': 0.1,
-        'b_rel': 0.1
+        'b_risk': 0.05,
+        'b_disc': 0,
+        'b_rel': 10/60
         },  # ultimately need b_rel_weight * b_TT
     'Speed_Params': {
         'walk': 1.3,  # m/s
@@ -34,7 +34,7 @@ config_info = {
         'TNC': {'wait_time': 7}  # minutes
         },   # km/hr
     'Price_Params': {
-        'walk': {'ppmin': 0},
+        'walk': {'ppmin': 0},  # fix the scooter price back!
         'scoot': {'ppmin': 0.39, 'fixed': 1},  # $
         'bs': {'ppmin': 20/300},
         'TNC': {'ppmin': 0.34, 'ppmile': 0.92, 'fixed': 1.51 + 1.60, 'minfare_buffer': 8.32/4},
@@ -119,7 +119,7 @@ config_info = {
         },
     'Scoot_Data_Generation': {
         'num_days_of_data': 30,
-        'num_obs': 100
+        'num_obs': 500
         },
     'Supernetwork': {
         'modes_included': ['bs', 'z', 'sc', 't', 'pt'],

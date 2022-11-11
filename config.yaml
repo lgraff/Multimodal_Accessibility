@@ -1,9 +1,9 @@
 Beta_Params:
   b_TT: 0.16666666666666666
-  b_disc: 0.1
+  b_disc: 0
   b_price: 1
-  b_rel: 0.1
-  b_risk: 0.1
+  b_rel: 0.16666666666666666
+  b_risk: 0.05
 Connection_Edge_Speed:
   bs: 4.166666666666667
   pv: 2.2347222222222225
@@ -76,7 +76,7 @@ Risk_Parameters:
   zip: 1
 Scoot_Data_Generation:
   num_days_of_data: 30
-  num_obs: 100
+  num_obs: 500
 Speed_Params:
   TNC:
     wait_time: 7
