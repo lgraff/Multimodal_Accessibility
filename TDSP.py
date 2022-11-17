@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 
 #os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl')
 
-def TDSP(G_super, timestamp, beta_rel):
+def TDSP(G_super, timestamp, betas):
     # read pickled supernetwork, complete with transfer edges and od cnx
     #cwd = os.getcwd()
     #with open(graph_filepath, 'rb') as inp:
@@ -38,12 +38,12 @@ def TDSP(G_super, timestamp, beta_rel):
             cost_factor_cols.append('interval'+str(i)+'_' + c)
     cols_keep = ['source', 'target', 'mode_type'] + cost_factor_cols
     df_link = df_link[cols_keep]
-    betas = conf.config_data['Beta_Params']
+    betas = betas #conf.config_data['Beta_Params']
     for i in range(num_intervals):
         df_link['interval'+str(i)+'_' + 'cost'] = (betas['b_TT'] * df_link['interval'+str(i)+'_' + 'avg_TT_min']
                                                    + betas['b_disc'] * df_link['interval'+str(i)+'_' + 'discomfort']
                                                    + betas['b_price'] * df_link['interval'+str(i)+'_' + 'price']
-                                                   + beta_rel * df_link['interval'+str(i)+'_' + 'reliability']
+                                                   + betas['b_rel'] * df_link['interval'+str(i)+'_' + 'reliability']
                                                    #+ beta_risk * df_link['interval'+str(i)+'_' + 'risk'])
                                                    + betas['b_risk'] * df_link['interval'+str(i)+'_' + 'risk'])
     cost_cols = ['interval'+str(i)+'_' + 'cost' for i in range(num_intervals)]
@@ -59,19 +59,6 @@ def TDSP(G_super, timestamp, beta_rel):
     df_G = df_G.copy()
     df_G['source'] = df_G['source'].map(inv_nid_map)
     df_G['target'] = df_G['target'].map(inv_nid_map)
-
-    # *****************
-    # add cost of parking to zipcar:
-    # **THIS IS SOMETHING TO MOVE TO THE SECTION OF BUILDING UNIMODAL GRAPHS**
-    park_hours = 2
-
-    df_linkcost = df_linkcost.copy()
-    for index, row in df_linkcost[df_linkcost['target'].str.startswith('kz')].iterrows():
-        parking_rate = G_super.graph.nodes[row['target']]['float_rate']
-        # add park_hours * (parking_rate per hour + zip cost per hour) to each cost
-        for i in range(num_intervals):
-            df_linkcost.at[index, 'interval' + str(i) + '_cost'] += park_hours * (parking_rate + conf.config_data['Price_Params']['zip']['ppmin']*60)
-    # *****************
 
     df_linkcost = df_linkcost.copy()
     df_linkcost['source'] = df_linkcost['source'].map(inv_nid_map)
@@ -209,9 +196,6 @@ def TDSP(G_super, timestamp, beta_rel):
 
     return(path, cost, TT)
 
-# conduct sensitivity analysis by varying risk parameter over some range 
-cwd = os.getcwd()
-
 # compile supernetwork with od-connectors
 # take the supernetwork as input, then output the supernetwork with od connectors
 cwd = os.getcwd()
@@ -219,9 +203,13 @@ G_super_od = od_cnx(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'),
        		conf.config_data['Supernetwork']['org'],
        		conf.config_data['Supernetwork']['dst'])
 
+# conduct sensitivity analysis by varying risk parameter over some range
+beta_dict = conf.config_data['Beta_Params']
+
 travel_times = []
 for r in np.arange(0,30/60,5/60):
-    path, cost, TT = TDSP(G_super_od, 1, r)
+    beta_dict['b_rel'] = r  # replace the reliability beta
+    path, cost, TT = TDSP(G_super_od, 6, beta_dict)  # original timestamp was 1
     travel_times.append(TT)
 print(travel_times)
 

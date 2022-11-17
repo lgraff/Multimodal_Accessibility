@@ -88,24 +88,22 @@ class Supernetwork:
                         # build the transfer edge
                         edge = (i_name, j_name)
                         # find the walking time associated with transfer edge, call it walk_cost
-                        walk_time = self.gcd_dist[i,j] / conf.config_data['Speed_Params']['walk'] / 60  # dist[m] / speed [m/s] / 60 s/min  --> [min]
+                        walk_time = self.gcd_dist[i,j] / conf.config_data['Speed_Params']['walk']   # (seconds)  # dist[m] / speed [m/s] / 60 s/min  --> [min]
                         wait_time = 0
                         # account for a no-cost public transit transfer (actually this creates errors, need to use node-movement cost)
                         fixed_price = 0   # already account for PT fixed cost in the boarding edges
                         
                         # also add an inconvenience cost; this needs to be more carefully considered. make sufficiently large for now
                         # actually we can embed inconvenience cost into "discomfort" attribute
-                        attr_dict = {'avg_TT_min': walk_time + wait_time,
-                                     'price': fixed_price,
-                                     'reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-                                     #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1
-                                     'risk': 1 * (walk_time + wait_time),
-                                     'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
-                                     #'type': etype,
-                                     #'mode_type': 'w'}                
-                        trans_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                                | {'mode_type':'w'}
-                                                | {'type':etype})
+                        attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
+                                            '0_price': fixed_price,
+                                            '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
+                                            '0_risk': 1, 
+                                            '0_discomfort': conf.config_data['Discomfort_Params']['walk']}            
+                        trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}
+##                        (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
+##                                                | {'mode_type':'w'}
+##                                                | {'type':etype})
                         
                 
             # find the nearest neighbor in each flex network
@@ -124,27 +122,36 @@ class Supernetwork:
                             k_name = nnName
                             edge_in = (i_name, k_name)                
                             edge_out = (k_name, i_name)
-                            walk_time = nnDist / conf.config_data['Speed_Params']['walk'] / 60  # dist[m] / speed [m/s] / 60 s/min               
-                            wait_time = conf.config_data['Speed_Params']['TNC']['wait_time'] if ut.mode(edge_in[1]) == 't' else 0
+                            walk_time = nnDist / conf.config_data['Speed_Params']['walk']  # (seconds)       dist[m] / speed [m/s]               
+                            wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time'] if ut.mode(edge_in[1]) == 't' else 0
                             fixed_price = conf.config_data['Price_Params']['TNC']['fixed'] if ut.mode(edge_in[1]) == 't' else 0
-        
+                            rel_weight = conf.config_data['Reliability_Params']['TNC_wait'] if wait_time > 0 else conf.config_data['Reliability_Params']['walk']
+        	            
                             if m != 'sc':   # includes inconvenience cost
                                 # the transfer edge cost is constant for all times 
                                 
                                 # separately check if edge_in / edge_out is allowed
-                                if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:   
-                                    attr_dict = {'avg_TT_min': walk_time + wait_time,
-                                                 'price': fixed_price,
-                                                 'reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-                                                 #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1
-                                                 'risk': 1 * ( walk_time + wait_time),
-                                                 'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time} 
-                                                 #'type': etype,
-                                                 #'mode_type': 'w'} 
-                                    trans_edges[edge_in] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                                            | {'mode_type':'w'}
-                                                            | {'type':etype})
+                                if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
+
+                                    attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
+                                                        '0_price': fixed_price,
+                                                        '0_reliability': (walk_time + wait_time) * rel_weight,
+                                                        '0_risk': 1, 
+                                                        '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
+                                    trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}
                                     
+##                                    attr_dict = {'avg_TT_min': walk_time + wait_time,
+##                                                 'price': fixed_price,
+##                                                 'reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
+##                                                 #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1
+##                                                 'risk': 1 * ( walk_time + wait_time),
+##                                                 'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time} 
+##                                                 #'type': etype,
+##                                                 #'mode_type': 'w'} 
+##                                    trans_edges[edge_in] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
+##                                                            | {'mode_type':'w'}
+##                                                            | {'type':etype})
+##                                    
                                                             
                                     
                                 if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  # prevents (tnc-parking) transfers
@@ -152,18 +159,15 @@ class Supernetwork:
                                     # remove wait time 
                                     # Hardwiring avg_TT_min: walk_time and price:0 is a cheap solution
                                     # The reason I'm doing this is to avoid paying fixed or waiting costs when tranferring TO tnc
-                                    # need to think of a more elegant way. tbd 
-                                    attr_dict = {'avg_TT_min': walk_time,
-                                                 'price': 0,
-                                                 'reliability': walk_time *  conf.config_data['Reliability_Params']['walk'],
-                                                 #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1
-                                                 'risk': 1 * walk_time,
-                                                 'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
-                                                 #'type': etype,
-                                                 #'mode_type': 'w'} 
-                                    trans_edges[edge_out] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                                            | {'mode_type':'w'}
-                                                            | {'type':etype})
+                                    # need to think of a more elegant way. tbd
+
+                                    attr_dict = {'0_avg_TT_sec': walk_time,   # remove wait time
+                                                        '0_price': fixed_price,
+                                                        '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
+                                                        '0_risk': 1, 
+                                                        '0_discomfort': conf.config_data['Discomfort_Params']['walk']} 
+                                    trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}
+                                
         
                             else:  # mode is scooter
                                 # when transferring TO scooter, assign costs that were created above according to historical data
@@ -175,18 +179,13 @@ class Supernetwork:
         
                                 # when transferring FROM scooter, use nearest neighbor distance b/c ride scooter to closest pickup point for next mode
                                 if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  
-                                    attr_dict = {'avg_TT_min': walk_time,
-                                                 'price': fixed_price,
-                                                 'reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-                                                 #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1
-                                                 'risk': 1 * walk_time,
-                                                 'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
-                                                 #'type': etype,
-                                                 #'mode_type': 'w'} 
-                                    trans_edges[edge_out] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                                            | {'mode_type':'w'}
-                                                            | {'type':etype})      
-    
+                                    attr_dict = {'0_avg_TT_sec': walk_time,   # remove wait time
+                                                        '0_price': fixed_price,
+                                                        '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
+                                                        '0_risk': 1, 
+                                                        '0_discomfort': conf.config_data['Discomfort_Params']['walk']} 
+                                    trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}
+                                    
         self.transfer_edges = trans_edges  # for testing purposes so we can access the tx edges directly
         # now add the transfer edges to the supernetwork
         trans_edges = [(e[0], e[1], trans_edges[e])for e in trans_edges.keys()]

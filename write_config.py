@@ -22,7 +22,7 @@ config_info = {
     'Beta_Params': {
         'b_price': 1,
         'b_TT': 10/60,
-        'b_risk': 0.05,
+        'b_risk': 0.1,
         'b_disc': 0,
         'b_rel': 10/60
         },  # ultimately need b_rel_weight * b_TT
@@ -62,8 +62,8 @@ config_info = {
         'miles_in_km': 0.621371
         },
     'Time_Intervals': {
-        'interval_spacing': 10,  # min
-        'len_period': 120,  # min
+        'interval_spacing': 5,  # sec
+        'len_period': 60*60,  # sec
         'time_start': 7,  # AM
         'time_end': 9  # AM
         },
@@ -86,7 +86,9 @@ config_info = {
         'PT_traversal': 1.5,
 	'TNC': 1.5,
         'TNC_wait': 2,
-	'zip': 1.5
+	'zip': 1.5,
+        'drive': 1.5,
+ 	'bike': 1
         },
     'Discomfort_Params': {
         'walk': 1.1,

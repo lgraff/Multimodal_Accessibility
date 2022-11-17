@@ -3,7 +3,7 @@ Beta_Params:
   b_disc: 0
   b_price: 1
   b_rel: 0.16666666666666666
-  b_risk: 0.05
+  b_risk: 0.1
 Connection_Edge_Speed:
   bs: 4.166666666666667
   pv: 2.2347222222222225
@@ -57,7 +57,9 @@ Reliability_Params:
   PT_wait: 2
   TNC: 1.5
   TNC_wait: 2
+  bike: 1
   bs: 1
+  drive: 1.5
   pb: 1
   pv: 1.5
   scoot: 1
@@ -99,7 +101,7 @@ Supernetwork:
   - -79.94868171046522
   - 40.416379503934145
 Time_Intervals:
-  interval_spacing: 10
-  len_period: 120
+  interval_spacing: 5
+  len_period: 3600
   time_end: 9
   time_start: 7

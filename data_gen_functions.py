@@ -39,7 +39,7 @@ def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike
     # for subsequent plotting purposes 
     #node_coords = np.array([val for key,val in nx.get_node_attributes(G_u, 'pos').items() if key in list(node_id_map_fixed.values())])
 
-    for i in range(n_intervals):  # each time interval 
+    for i in range(1):  # i think we will just do this once and reuse the results  #(n_intervals):  # each time interval 
         obs = {}  # obs is a dict, where the key is the day, the value is an array of coordinates representing different observations
         for j in range(n_days):  # each day
             n_obs = n_obs #np.random.uniform(n_obs_lb,n_obs_ub)  # how many scooter observations for the day-time interval pair
@@ -78,15 +78,14 @@ def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike
             mean_min_dist = np.mean(all_min_dist)  # mean distance from node n to any scooter in past "n_days" days
             p95 = np.percentile(all_min_dist, 95)  # 95th percentile distance from node n to any scooter in past "n_days" days
             
-            node_cost_dict[n] = {'interval'+str(i)+'_avg_TT_min': (mean_min_dist / conf.config_data['Speed_Params']['walk'] / 60),
-                                 'interval'+str(i)+'_price': conf.config_data['Price_Params']['scoot']['fixed'],
-                                 'interval'+str(i)+'_reliability': p95 / conf.config_data['Speed_Params']['walk'] / 60,
-                                 'risk_idx': 1,
-                                 'interval'+str(i)+'_risk': 1 * (mean_min_dist / conf.config_data['Speed_Params']['walk'] / 60),
-                                 'mode_type':'w',
-                                 'interval'+str(i)+'_discomfort': conf.config_data['Discomfort_Params']['scoot'] * (
-                                     (mean_min_dist/conf.config_data['Speed_Params']['walk']/60)),
-                                 'etype': 'transfer'}   
+            node_cost_dict[n] = {str(i)+'_avg_TT_sec': (mean_min_dist / conf.config_data['Speed_Params']['walk']),
+                                               str(i)+'_price': conf.config_data['Price_Params']['scoot']['fixed'],
+                                               str(i)+'_reliability': p95 / conf.config_data['Speed_Params']['walk'],
+                                               'risk_idx': 1,
+                                               str(i)+'_risk': 1,
+                                              'mode_type': 'w',
+                                               str(i)+'_discomfort': conf.config_data['Discomfort_Params']['walk'],
+                                               'etype': 'transfer'}   
 
         for node, cost_dict in node_cost_dict.items():
             all_costs[node].update(cost_dict) 
@@ -101,16 +100,6 @@ def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike
 # G_super.separate_nidmap_fix_flex(all_fix_pre, all_flex_pre)
 
 # sc_costs = gen_data(G_super, num_days_of_data, num_intervals, num_obs, bbox_study_area)
-
-
-# #%%  observe
-# import re
-# test = list()
-# for key in sc_costs.keys():
-#     m = re.sub(r'[^a-zA-Z]', '', key)
-#     test.append(m)
-# print(set(test))
-
 
 #%%
 

@@ -28,16 +28,16 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
     
     # add price (which is time-independent)
     for e in G_bs.edges:
-        avg_TT_min =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] / 60
-        price = conf.config_data['Price_Params']['bs']['ppmin'] * avg_TT_min  # op cost per edge (which is 0)
-        price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
-                              num_time_intervals * [price]))
-        nx.set_edge_attributes(G_bs, {e: price_attr})
+        avg_TT_sec =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] 
+        price = conf.config_data['Price_Params']['bs']['ppmin'] * (avg_TT_sec/60)  # op cost per edge (which is 0)
+##        price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
+##                              num_time_intervals * [price]))
+        nx.set_edge_attributes(G_bs, {e:  {'0_price':price}})
         
         discomf = conf.config_data['Discomfort_Params']['bs'] #* avg_TT_min
-        discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], 
-                              num_time_intervals * [discomf]))
-        nx.set_edge_attributes(G_bs, {e: discomf_attr})
+        #discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], num_time_intervals * [discomf]))
+        nx.set_edge_attributes(G_bs, {e: {'0_discomfort':discomf}})
+
         
     # read in bikeshare depot locations and build connection edges
     df_bs = pd.read_csv(os.path.join(depot_filepath))
