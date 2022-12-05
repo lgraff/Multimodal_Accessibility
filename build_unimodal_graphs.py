@@ -32,6 +32,9 @@ from bikeshare_graph import build_bikeshare_graph
 # # read study area file
 study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
 #study_area_gdf = conf.study_area_gdf
+# some parameters
+len_period = int(conf.config_data['Time_Intervals']['len_period'])
+num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
 
 # conf.study_area_gdf = gpd.read_file(os.path.join(filepath, 'pgh_study_area.csv'))
 # read graphs that were created in 'process_street_centerlines.py'
@@ -40,20 +43,6 @@ with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_drive.pkl'), 'rb') as inp:
     G_drive = pickle.load(inp)
 with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_bike.pkl'), 'rb') as inp:
     G_bike = pickle.load(inp)
-
-#%%
-# Here we build the travel time multiplier as a function of time 
-# some arbitary linear function
-len_period = int(conf.config_data['Time_Intervals']['len_period'])
-num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
-print(num_intervals)
-x = np.linspace(0, len_period, num_intervals )  # x is time [min past] relative to 07:00 AM
-m = (1.5-1)/len_period # slope
-y = m*x + 1
-plt.plot(x, y, 'o', color='black', zorder=2);
-plt.plot(x, y, color='red', zorder=1);
-plt.xlabel('Time (seconds relative to 07:00AM)')
-plt.ylabel('Travel time multiplier \n (relative to baseline)')
 
 # *idea*: let's only store the "base" travel time, i.e. at the 0th interval when TT multipler is equal to 1
 # *i think* that all other values can be derived from this one
@@ -114,8 +103,8 @@ TNC_ppmin = conf.config_data['Price_Params']['TNC']['ppmin']
 miles_in_km = conf.config_data['Conversion_Factors']['miles_in_km']
 for e in G_tnc.edges:
     #for i in range(num_intervals):
-    G_tnc.edges[e]['0'+'_price'] = ((TNC_ppmin / 60) * G_tnc.edges[e]['0'+'_avg_TT_sec'] +
-                                                  TNC_ppmile * miles_in_km * G_tnc.edges[e]['length_m']/1000)
+    G_tnc.edges[e]['0'+'_price'] = TNC_ppmile * miles_in_km * G_tnc.edges[e]['length_m']/1000   # $/mile * mile/km * km
+                                    # + (TNC_ppmin / 60) * G_tnc.edges[e]['0'+'_avg_TT_sec'] +                                     
     G_tnc.edges[e]['0'+'_discomfort'] = conf.config_data['Discomfort_Params']['TNC']
 
 # ** just for testing **

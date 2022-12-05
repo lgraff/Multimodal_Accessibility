@@ -55,6 +55,8 @@ def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike
             all_min_dist = np.empty((1,n_days))  # initialize the min distance matrix, one entry per day
                        
             for d in range(n_days):  # how many days of historical scooter data we have 
+                # TO DO: check if transfer is allowed between ut.mode(n) and 'sc'
+                
                 all_dist = ut.calc_great_circle_dist(np.array(G_superntwk.graph.nodes[n]['pos']), obs[d])  # dist from the fixed node to all observed scooter locations 
                 min_dist = np.min(all_dist)  # choose the scooter with min dist. assume a person always walks to nearest scooter
                 all_min_dist[0,d] = min_dist # for the given day, the dist from the fixed node to the nearest scooter is min_dist
