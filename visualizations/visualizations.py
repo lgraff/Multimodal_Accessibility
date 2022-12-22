@@ -18,25 +18,28 @@ import pickle
 import pandas as pd
 import geopandas as gpd
 import math
+from od_connector import od_cnx
 from shapely import wkt, geometry
 from supernetwork import Supernetwork
 
 #%% read pickled supernetwork (which includes unimodal networks joined by transfer edges)
 cwd = os.getcwd()
-with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl'), 'rb') as inp:
-    G_super_od = pickle.load(inp)
+G_super_od = od_cnx(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'),
+        conf.config_data['Supernetwork']['org'],[-79.938444, 40.418378])
+
 #%%
 # choose only a single neighborhood to use for visualization
 cwd = os.getcwd()
-path = os.path.join(cwd, 'Data', 'Input_Data', "Neighborhoods_.shp")
+path = os.path.join(cwd, 'Data', 'Input_Data', 'Neighborhoods', "Neighborhoods_.shp")
 nhoods = gpd.read_file(path)  # all neighborhoods
-hood = conf.config_data['Geography']['neighborhoods'][3]  # only the first neighborhood in the list
+hood = conf.config_data['Geography']['neighborhoods'][0]  # only the ith neighborhood in the list
 hood_gdf = nhoods[nhoods['hood'] == hood]  
+
 # one neighbrhood is still too big to visualize. let's scale down by 50%
 fig,ax = plt.subplots()
-scale_factor = 0.3
+scale_factor = 0.7
 x=0.1
-y=0.3
+y=-0.2
 scaled_gdf = hood_gdf.geometry.scale(xfact=scale_factor, yfact=scale_factor).translate(-1/69*x, 1/69*y)
 hood_gdf.plot(ax=ax, color='blue')
 scaled_gdf.plot(ax=ax, color='green')
@@ -87,15 +90,23 @@ def jitter_nodes(G, network_type, jitter_param):
 
 modes_included = conf.config_data['Supernetwork']['modes_included']
 modes_included.remove('pt')
-modes_included.insert(math.floor(len(modes_included)/2), 'pt')
+modes_included.insert(math.floor(len(modes_included)/2), 'pt')  # explicitly have PT graph be the one in the center
 
 jitter_param_dict = {m: (j/200)*2 for j,m in enumerate(modes_included)}  # can adjust jitter param as necessary
+# explicitly adjust org and dest if they are in the node list
+if 'org' in list(G.nodes):
+    G.nodes['org']['pos_adj'] = (G.nodes['org']['pos'][0], G.nodes['org']['pos'][1] + jitter_param_dict['pt']) 
+if 'dst' in list(G.nodes):
+    G.nodes['dst']['pos_adj'] = (G.nodes['dst']['pos'][0], G.nodes['dst']['pos'][1] + jitter_param_dict['sc']) 
+
 # also include adjusted pos for org/dst
 #G.nodes['org']['pos_adj'] = G.nodes['org']['pos']
 #G.nodes['dst']['pos_adj'] = G.nodes['dst']['pos']
 
 for m in modes_included:
     jitter_nodes(G, m, jitter_param_dict[m])
+
+#G.remove_node('org')
 
 # draw the graph in networkx
 node_color_map = {'bs':'green', 'bsd':'lime', 'z':'blue', 'zd': 'skyblue', 'kz': 'dodgerblue',
@@ -111,10 +122,11 @@ fig, ax = plt.subplots(figsize=(20,20))
 nx.draw_networkx_nodes(G, pos=node_coords, node_color=node_color, node_size=20, alpha=0.6, ax=ax)
 nx.draw_networkx_edges(G, pos=node_coords, edge_color=edge_color, style=edge_style, alpha=0.6, arrowsize=10, ax=ax)
 # add legend for node color    
-inv_node_cmap = dict(zip(node_color_map.values(), node_color_map.keys()))
-for v in set(inv_node_cmap.keys()):
-    ax.scatter([],[], c=v, label=inv_node_cmap[v])
-ax.legend(loc = 'upper right')
+
+# inv_node_cmap = dict(zip(node_color_map.values(), node_color_map.keys()))
+# for v in set(inv_node_cmap.keys()):
+#     ax.scatter([],[], c=v, label=inv_node_cmap[v])
+# ax.legend(loc = 'upper right')
 
 #nx.draw(G, pos=node_coords, with_labels=False, font_color='white',  font_weight = 'bold',
  #       node_size=15, node_color=node_color, edge_color=edge_color, alpha=0.7, arrowsize=10, style=edge_style, ax=ax)
@@ -122,17 +134,17 @@ ax.legend(loc = 'upper right')
 
 #%%    
 # plot for visualization
-node_color_map = {'bs':'green', 'bsd':'lime', 'z':'blue', 'zd': 'skyblue', 'kz': 'dodgerblue',
-                  'sc':'darkviolet', 't':'red', 'ps':'brown', 'rt': 'orange' , 'od':'black'}
-node_color = [node_color_map[G.nodes[n]['node_type']] for n in G.nodes.keys()]
-edge_color = ['darkgray' if G.edges[e]['mode_type'] == 'w' else 'black' for e in G.edges] 
-edge_style = [(0,(5,10)) if G.edges[e]['mode_type'] == 'w' 
-               else 'dotted' if G.edges[e]['mode_type'] in ['board','alight'] else 'solid' for e in G.edges] 
-ax = ut.draw_graph(G, node_color, node_color_map, edge_color, edge_style, adjusted=True)
+# node_color_map = {'bs':'green', 'bsd':'lime', 'z':'blue', 'zd': 'skyblue', 'kz': 'dodgerblue',
+#                   'sc':'darkviolet', 't':'red', 'ps':'brown', 'rt': 'orange' , 'od':'black'}
+# node_color = [node_color_map[G.nodes[n]['node_type']] for n in G.nodes.keys()]
+# edge_color = ['darkgray' if G.edges[e]['mode_type'] == 'w' else 'black' for e in G.edges] 
+# edge_style = [(0,(5,10)) if G.edges[e]['mode_type'] == 'w' 
+#                else 'dotted' if G.edges[e]['mode_type'] in ['board','alight'] else 'solid' for e in G.edges] 
+# ax = ut.draw_graph(G, node_color, node_color_map, edge_color, edge_style, adjusted=True)
 
-#%%
-for e in G.edges.keys():
-    if e[0].startswith('kz'):
-        print(e)
+# #%%
+# for e in G.edges.keys():
+#     if e[0].startswith('kz'):
+#         print(e)
 
 

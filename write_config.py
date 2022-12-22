@@ -62,7 +62,7 @@ config_info = {
         'miles_in_km': 0.621371
         },
     'Time_Intervals': {
-        'interval_spacing': 5,  # sec
+        'interval_spacing': 10,  # sec
         'len_period': 60*60,  # sec
         'time_start': 7,  # AM
         'time_end': 9  # AM

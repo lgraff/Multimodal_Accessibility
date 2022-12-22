@@ -139,12 +139,12 @@ class Supernetwork:
                                          '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
                             # special cases: TNC and scooter
                             if m == 't':
+                                # transfer TO tnc: walk_edge + wait_edge
                                 if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
                                     # add virtual TNC node to the graph and also to the nid map
                                     t_virtual = 'tw' + re.sub(r'[a-zA-Z]', '', k_name)
                                     self.graph.add_node(t_virtual, node_type='tw', pos=self.graph.nodes[k_name]['pos'],
-                                                        nwk_name = 't')
-                                    #self.nid_map[max(self.nid_map.keys())+1] = t_virtual
+                                                        nwk_type = 't')
                                     # add virtual waiting edge
                                     t_wait_edge = (t_virtual, k_name)
                                     wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time']
@@ -157,7 +157,10 @@ class Supernetwork:
                                                         '0_discomfort': 0}
                                     trans_edges[t_wait_edge] = t_wait_attr_dict | {'mode_type':'t_wait'} | {'type':etype}  # waiting edge
                                     trans_edges[(i_name,t_virtual)] = attr_dict | {'mode_type':'w'} | {'type':etype} # transfer (walking) edge
-                            if m == 'sc':
+                                # when transferring FROM tnc, use nearest neighbor distance b/c ride tnc to closest pickup point for next mode
+                                if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  
+                                    trans_edges[edge_out] = attr_dict | {'mode_type':'w'} | {'type':etype}
+                            elif m == 'sc':
                                 if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
                                     scoot_attr_dict = sc_costs[i_name]
                                     scoot_attr_dict['type'] = etype

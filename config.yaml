@@ -101,7 +101,7 @@ Supernetwork:
   - -79.94868171046522
   - 40.416379503934145
 Time_Intervals:
-  interval_spacing: 5
+  interval_spacing: 10
   len_period: 3600
   time_end: 9
   time_start: 7

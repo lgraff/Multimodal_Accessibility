@@ -82,7 +82,7 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
     inv_nid_map = dict(zip(G_super.nid_map.values(), G_super.nid_map.keys())) 
         
     for i_name in ['org','dst']:
-        print(inv_nid_map[i_name])
+        #print(inv_nid_map[i_name])
         #***** I think we should not be using G_super.gcd_dist, but rather a newly created one which includes the ODs and their gcd dists
         W_od = conf.config_data['Supernetwork']['W_od'] * conf.config_data['Conversion_Factors']['meters_in_mile']
         catch = ut.wcz(inv_nid_map[i_name], G_super.gcd_dist, W_od)  # find WCZ
@@ -105,17 +105,16 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                 # note that wait time is not included. this is because we're dealing with fixed modes. only TNC has wait time
                 # wait time for PT is embedded in alighting edges
                 fixed_price = 0  # for all fixed modes
-                attr_dict = {'avg_TT_min': walk_time + wait_time,
-                             'price': fixed_price,
-                             'reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
+                attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
+                             '0_price': fixed_price,
+                             '0_reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
                              #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                             'risk': 1 * (walk_time + wait_time),
-                             'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
-                             #'type': 'od_cnx',
-                             #'mode_type': 'w'}                
-                od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                        | {'mode_type':'w'}
-                                        | {'type':'od_cnx'})
+                             '0_risk': 1 * (walk_time + wait_time),
+                             '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
+                od_cnx_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}  # | operator concatenates dicts                
+                # od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
+                #                         | {'mode_type':'w'}
+                #                         | {'type':'od_cnx'})
                          
                 
         # some fixed modes do not have a node within the wcz. for these modes, we will instead connect the 
@@ -139,23 +138,21 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                 wait_time = 0
                 fixed_price = 0
 
-                attr_dict = {'avg_TT_min': walk_time + wait_time,
-                             'price': fixed_price,
-                             'reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
+                attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
+                             '0_price': fixed_price,
+                             '0_reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
                              #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                             'risk': 1 * (walk_time + wait_time),
-                             'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
-                             #'type': 'od_cnx',
-                             #'mode_type': 'w'}                     
+                             '0_risk': 1 * (walk_time + wait_time),
+                             '0_discomfort': conf.config_data['Discomfort_Params']['walk']}                
 
                 if i_name == 'org':
                     edge = (i_name, r_name)  # build org connector
                 if i_name == 'dst':
                     edge = (r_name, i_name)  # build dst connector
-
-                od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                        | {'mode_type':'w'}
-                                        | {'type':'od_cnx'})      
+                od_cnx_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}
+                # od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
+                #                         | {'mode_type':'w'}
+                #                         | {'type':'od_cnx'})      
 
         # build od connector edge for the nearest flexible node (relax constraints that needs to be in wcz)
         # also includes an org connector from org to nearest PV node, but does NOT include a dst connector from dst to nearest PV node
@@ -163,51 +160,117 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
         for m in G_super.flex_pre:
             if i_name == 'dst' and m == 'pv':  # exception 3
                 continue
+            #print(i_name, m)
+            #print('gcd dist shape: ', G_super.gcd_dist.shape)
+            #print('nidmap shape: ', len(G_super.nid_map))
             nnID, nnName, nnDist = ut.nn(inv_nid_map[i_name], G_super.gcd_dist, m, G_super.nid_map) 
             k_name = nnName
+            walk_time = nnDist / conf.config_data['Speed_Params']['walk']  # (seconds)       dist[m] / speed [m/s] 
+            # TO DO: do we want to add a "wait time" associated with scooter/bikeshare unlocking? that seems like almost too granular though
+            # consider: add fixed price (approx) of zipcar? 
+            attr_dict = {'0_avg_TT_sec': walk_time,
+                            '0_price': 0,
+                            '0_reliability': (walk_time) *  conf.config_data['Reliability_Params']['walk'],
+                            '0_risk': 1, 
+                            '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
             #print(k_name)
             #if nnID in catch:   *we have decided to relax this constraint*
             
             # do this separately for scooters/TNCs and other flex modes. but have not yet generated TNC data to account for variable pickup wait times
-            if (i_name == 'org' and m == 'sc'):
-                edge = (i_name, k_name)
-                #print(edge)
-                sc_cost_dict = sc_costs[i_name]
-                sc_cost_dict['type'] = 'od_cnx'    # store edge type
-                od_cnx_edges[edge] = sc_cost_dict
-
-            else:   
-                cnx_edge_length = nnDist
-                #print(i_name)
-                #print(nnName, nnDist)
-                walk_time = cnx_edge_length / conf.config_data['Speed_Params']['walk'] / 60  # [min]
-                #print(walk_time)
-                wait_time = conf.config_data['Speed_Params']['TNC']['wait_time'] if (m == 't') & (i_name == 'org') else 0
-                fixed_price = conf.config_data['Price_Params']['TNC']['fixed'] if (m == 't') & (i_name == 'org') else 0
-                rel_TNC_wait = conf.config_data['Reliability_Params']['TNC_wait'] 
-                # to do: add zip fixed price, maybe 9/4                          
-                
-                attr_dict = {'avg_TT_min': walk_time + wait_time,
-                             'price': fixed_price,
-                             'reliability': (walk_time * conf.config_data['Reliability_Params']['walk'] 
-                                             + wait_time * rel_TNC_wait),
-                             #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                             'risk': 1 * (walk_time + wait_time),
-                             'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
-                             #'type': 'od_cnx',
-                             #'mode_type': 'w'}  
-                
+            if m == 't':
                 if i_name == 'org':
-                    edge = (i_name, k_name)  # build org connector
+                    # build edge org -- t_wait -- t
+                    # add virtual TNC node to the graph and also to the nid map
+                    t_virtual = 'tw' + re.sub(r'[a-zA-Z]', '', k_name)
+                    G_super.graph.add_node(t_virtual, node_type='tw', pos=G_super.graph.nodes[k_name]['pos'],
+                                        nwk_type = 't')
+                    #G_super.nid_map[max(G_super.nid_map.keys())+1] = t_virtual
+                    # add virtual waiting edge
+                    t_wait_edge = (t_virtual, k_name)
+                    wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time']
+                    fixed_price = conf.config_data['Price_Params']['TNC']['fixed']
+                    rel_weight = conf.config_data['Reliability_Params']['TNC_wait']
+                    t_wait_attr_dict = {'0_avg_TT_sec': wait_time,
+                                        '0_price': fixed_price,
+                                        '0_reliability': wait_time * rel_weight,
+                                        '0_risk': 0, 
+                                        '0_discomfort': 0}
+                    od_cnx_edges[t_wait_edge] = t_wait_attr_dict | {'mode_type':'t_wait'} | {'type':'od_cnx'}  # waiting edge
+                    od_cnx_edges[(i_name,t_virtual)] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'} # transfer (walking) edge 
                 if i_name == 'dst':
-                    edge = (k_name, i_name)  # build dst connector
-                
-                od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                                        | {'mode_type':'w'}
-                                        | {'type':'od_cnx'})       
-    od_cnx_edges = [(e[0], e[1], od_cnx_edges[e])for e in od_cnx_edges.keys()] # convert od_cnx_edges to proper form so that they can be added to graph
+                    # build dst -- t
+                    edge = (k_name, i_name)
+                    od_cnx_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}
+            elif m == 'sc':
+                if i_name == 'org':
+                    # generate data and add edge org -- sc
+                    edge = (i_name, k_name)
+                    sc_cost_dict = sc_costs[i_name]
+                    sc_cost_dict['type'] = 'od_cnx'   
+                    od_cnx_edges[edge] = sc_cost_dict
+                if i_name == 'dst':
+                    # build dst - sc
+                    edge = (k_name, i_name)
+                    od_cnx_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}
+            else:
+                if i_name == 'org':
+                    # build i to k
+                    od_cnx_edges[(i_name, k_name)] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}
+                if i_name == 'dst':
+                    # build k to i
+                    od_cnx_edges[(k_name, i_name)] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}
+
+    od_cnx_edges = [(e[0], e[1], od_cnx_edges[e]) for e in od_cnx_edges.keys()] # convert od_cnx_edges to proper form so that they can be added to graph
     G_super.graph.add_edges_from(od_cnx_edges)
+
+    # add t_wait nodes to the nid_map
+    tw_nodes = [n for n in list(G_super.graph.nodes) if n.startswith('tw')]
+    for tw in tw_nodes:
+        G_super.nid_map[max(G_super.nid_map.keys())+1] = tw
+
     return G_super
+
+    #         # ***********************************************************************#
+    #         if (i_name == 'org' and m == 'sc'):
+    #             edge = (i_name, k_name)
+    #             #print(edge)
+    #             sc_cost_dict = sc_costs[i_name]
+    #             sc_cost_dict['type'] = 'od_cnx'    # store edge type
+    #             od_cnx_edges[edge] = sc_cost_dict
+
+    #         else:   
+    #             cnx_edge_length = nnDist
+    #             #print(i_name)
+    #             #print(nnName, nnDist)
+    #             walk_time = cnx_edge_length / conf.config_data['Speed_Params']['walk'] / 60  # [min]
+    #             #print(walk_time)
+    #             wait_time = conf.config_data['Speed_Params']['TNC']['wait_time'] if (m == 't') & (i_name == 'org') else 0
+    #             fixed_price = conf.config_data['Price_Params']['TNC']['fixed'] if (m == 't') & (i_name == 'org') else 0
+    #             rel_TNC_wait = conf.config_data['Reliability_Params']['TNC_wait'] 
+    #             # to do: add zip fixed price, maybe $9 per month / 4 uses per month                          
+                
+    #             attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
+    #                          '0_price': fixed_price,
+    #                          '0_reliability': (walk_time * conf.config_data['Reliability_Params']['walk'] 
+    #                                          + wait_time * rel_TNC_wait),
+    #                          #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
+    #                          '0_risk': 1 * (walk_time + wait_time),
+    #                          '0_discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time}
+    #                          #'type': 'od_cnx',
+    #                          #'mode_type': 'w'}  
+                
+    #             if i_name == 'org':
+    #                 edge = (i_name, k_name)  # build org connector
+    #             if i_name == 'dst':
+    #                 edge = (k_name, i_name)  # build dst connector
+    #             od_cnx_edges[edge] = attr_dict
+    #             # od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
+    #             #                         | {'mode_type':'w'}
+    #             #                         | {'type':'od_cnx'})       
+
+    # od_cnx_edges = [(e[0], e[1], od_cnx_edges[e]) for e in od_cnx_edges.keys()] # convert od_cnx_edges to proper form so that they can be added to graph
+    # G_super.graph.add_edges_from(od_cnx_edges)
+    # return G_super
     # then save the object
     #G_super.save_object(G_od_filepath) #os.path.join(cwd, 'Data', 'Output_Data', #'G_super_od.pkl'))
 
