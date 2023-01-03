@@ -13,7 +13,8 @@ import yaml
 # Define parameters
 config_info = {
     'Geography': {
-        'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North']
+        'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North',
+                           'Shadyside', 'Point Breeze'] #, 'Point Breeze North', 'Larimer']
                            
                            # 'Shadyside', 'South Oakland', 'Central Oakland', 'North Oakland', 'Bloomfield', 
                            # 'Friendship', 'Garfield',
@@ -21,10 +22,10 @@ config_info = {
         },
     'Beta_Params': {
         'b_price': 1,
-        'b_TT': 10/60,
+        'b_TT': 10/3600,   # when b_tt and b_rel are 10/60, the route is scoot-zip 
         'b_risk': 0.1,
         'b_disc': 0,
-        'b_rel': 10/60
+        'b_rel': 10/3600
         },  # ultimately need b_rel_weight * b_TT
     'Speed_Params': {
         'walk': 1.3,  # m/s
@@ -62,7 +63,7 @@ config_info = {
         'miles_in_km': 0.621371
         },
     'Time_Intervals': {
-        'interval_spacing': 10,  # sec
+        'interval_spacing': 30,  # sec
         'len_period': 60*60,  # sec
         'time_start': 7,  # AM
         'time_end': 9  # AM
@@ -128,7 +129,8 @@ config_info = {
         'W_tx': 0.5,  # miles,
         'W_od': 1.0,  # miles
 	'org': [-79.94868171046522, 40.416379503934145],
-	'dst': [-79.91944888168011, 40.45228774674678]
+	'dst': [-79.91944888168011, 40.45228774674678] # mellon park 
+    # chatham univ: [-79.92399900719222, 40.44955761072877] 
         }  #, 'pb']}
     
     }

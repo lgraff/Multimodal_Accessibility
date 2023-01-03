@@ -9,7 +9,7 @@ sp_strings/
 # Ignore the cache folder
 cache/
 
-# Ignore pycache folder
+# Ignore pycache and spyder folders
 __pycache__/
 .spyproject/
 
@@ -22,6 +22,9 @@ main.ipynb
 main_testing.py
 testing_unimodal.ipynb
 visualization_SP.py
+mm_graph_testing.ipynb
+tdsp_testing.ipynb
+create_td_cost_arrays.py
 
 # Ignore files produced by MAC-POSTS
 td_link_cost
@@ -30,9 +33,14 @@ td_node_cost
 td_node_tt
 graph
 config.conf
+cost_arrays
+macposts_files.npz
 
 macposts_files/
 mat.npz
 
 # Ignore jupyter notebook checkpoints
 .ipynb_checkpoints/
+
+# Ignore old files
+old_files/

@@ -100,7 +100,7 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                     edge = (j_name, i_name)  # build dst connector     
                 
                 walk_time = (G_super.gcd_dist[inv_nid_map[i_name], j] / 
-                             conf.config_data['Speed_Params']['walk']) / 60  # walking traversal time [min] of edge
+                             conf.config_data['Speed_Params']['walk'])  # walking traversal time [sec] of edge
                 wait_time = 0 
                 # note that wait time is not included. this is because we're dealing with fixed modes. only TNC has wait time
                 # wait time for PT is embedded in alighting edges
@@ -109,7 +109,7 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                              '0_price': fixed_price,
                              '0_reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
                              #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                             '0_risk': 1 * (walk_time + wait_time),
+                             '0_risk': 1, 
                              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
                 od_cnx_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}  # | operator concatenates dicts                
                 # od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
@@ -134,7 +134,7 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                 nnID, nnName, nnDist = ut.nn(inv_nid_map[i_name], G_super.gcd_dist, rm, G_super.nid_map) 
                 r_name = nnName
                 cnx_edge_length = nnDist
-                walk_time = cnx_edge_length / conf.config_data['Speed_Params']['walk'] / 60  # [min]
+                walk_time = cnx_edge_length / conf.config_data['Speed_Params']['walk']  # [sec]
                 wait_time = 0
                 fixed_price = 0
 
@@ -142,7 +142,7 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                              '0_price': fixed_price,
                              '0_reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
                              #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                             '0_risk': 1 * (walk_time + wait_time),
+                             '0_risk': 1,
                              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}                
 
                 if i_name == 'org':

@@ -35,7 +35,7 @@ nhoods = gpd.read_file(path)  # all neighborhoods
 hood = conf.config_data['Geography']['neighborhoods'][0]  # only the ith neighborhood in the list
 hood_gdf = nhoods[nhoods['hood'] == hood]  
 
-# one neighbrhood is still too big to visualize. let's scale down by 50%
+# one neighbrhood is still too big to visualize. let's scale down by x%
 fig,ax = plt.subplots()
 scale_factor = 0.7
 x=0.1

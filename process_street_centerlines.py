@@ -52,7 +52,7 @@ def get_nearest(src_point, candidates, k_neighbors=1):
 
 #%% Read street centerlines data
 cwd = os.getcwd()
-streets = gpd.read_file(os.path.join(cwd, 'Data', 'Input_Data', 'alleghenycounty_streetcenterlines202208', 
+streets = gpd.read_file(os.path.join(cwd, 'Data', 'Input_Data', 'AlleghenyCounty_StreetCenterlines202208', 
                                      'AlleghenyCounty_StreetCenterlines202208.shp')) 
 streets.to_crs('epsg:4326', inplace=True)
 study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))

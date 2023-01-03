@@ -9,7 +9,7 @@ Get parking data and output as csv, which contains one "representative" point
 for each zone
 
 """
-
+#%%
 # import libraries
 import geopandas as gpd
 import pandas as pd
@@ -49,3 +49,4 @@ gdf_park_avg_clip.to_file(os.path.join(filepath, 'parking_points.csv'), driver='
 fig, ax = plt.subplots()
 study_area_gdf.plot(ax=ax)
 gdf_park_avg.plot(ax=ax, color='red')
+# %%

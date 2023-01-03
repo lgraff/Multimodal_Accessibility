@@ -1,8 +1,8 @@
 Beta_Params:
-  b_TT: 0.16666666666666666
+  b_TT: 0.002777777777777778
   b_disc: 0
   b_price: 1
-  b_rel: 0.16666666666666666
+  b_rel: 0.002777777777777778
   b_risk: 0.1
 Connection_Edge_Speed:
   bs: 4.166666666666667
@@ -28,6 +28,8 @@ Geography:
   - Greenfield
   - Squirrel Hill South
   - Squirrel Hill North
+  - Shadyside
+  - Point Breeze
 Price_Params:
   PT:
     fixed: 2.75
@@ -101,7 +103,7 @@ Supernetwork:
   - -79.94868171046522
   - 40.416379503934145
 Time_Intervals:
-  interval_spacing: 10
+  interval_spacing: 30
   len_period: 3600
   time_end: 9
   time_start: 7
