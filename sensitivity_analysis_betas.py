@@ -117,11 +117,11 @@ for b_TT in np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
         tdsp_array = tdsp.tdsp_macposts(macposts_folder, cost_array_dict, inv_nid_map, timestamp) # shortest path (node sequence)
         # get path info
         nid_map = G_super_od.nid_map
-        node_seq = tdsp_array[:,0]  # 
+        node_seq = tdsp_array[:,0]
         link_seq = tdsp_array[:-1,1]
         path = [nid_map[int(n)] for n in node_seq]
         print(path)
-        all_paths[(round(b_TT,5), round(b_risk,5))] = (node_seq, link_seq)
+        all_paths[(round(b_TT,5), round(b_risk,5))] = link_seq
         # release the memory associated with large link cost array
         del tdsp_array
         del cost_final
@@ -131,35 +131,23 @@ for b_TT in np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
 
 #%% Get the totals of the individual cost components
 path_costs = {} # this will be a dict of dicts
-for beta_params, (node_seq, link_seq) in all_paths.items():
+for beta_params, link_seq in all_paths.items():
     price_total, risk_total, rel_total, tt_total = 0, 0, 0, 0
     cost_total = 0
     t = timestamp
-    for idx, l in enumerate(link_seq):  # the link seq
+    for l in link_seq:
         # look up how many time intervals it takes to cross the link
         l = int(l) 
         # adjustment of time (check on this i.e. can delete?)
         if t >= num_intervals:
             t = num_intervals - 1 
         intervals_cross = td_link_tt[l,t+1]  # add one bc first col is linkID
-        node_in, node_out = inv_link_id_map[l]   
-        # TODO: figure out how to add node costs (below needs to be checked)
-        if idx > 0:
-            node_id = node_seq[idx]
-            in_link_id = int(link_seq[idx-1])
-            out_link_id = l
-            if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
-                nodecost = -2.75
-            else:
-                nodecost = 0
-        else:
-            nodecost = 0
-        # td_node_cost: nodeID, inLinkID, outLinkID
+        node_in, node_out = inv_link_id_map[l]
         # get the price, risk, and reliability of the link at timestamp t
         price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
         #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
         # update time and cost totals
-        price_total += (price_link) #+ nodecost)
+        price_total += price_link
         risk_total += risk_link
         rel_total += rel_link
         tt_total += tt_link
@@ -174,7 +162,7 @@ for beta_params, (node_seq, link_seq) in all_paths.items():
 # probably you will cross a road every 5 min? idk       
 
 # %% Just print the path 
-for params, (node_seq, link_seq) in all_paths.items():
+for params, link_seq in all_paths.items():
     print('path parms:', params)
     for l in link_seq:
         l = int(l)
