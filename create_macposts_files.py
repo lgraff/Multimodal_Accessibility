@@ -169,21 +169,24 @@ def create_node_cost_file(G_super_od, link_id_map, inv_nid_map):
                 eo_num = (inv_nid_map[eo[0]], inv_nid_map[eo[1]])
                 # prevent consecutive transfers (so avoids ps-ps-ps or bs-ps-ps)
                 if ((ut.mode(ei[0]), ut.mode(ei[1])) in G_super_od.pmx) & ((ut.mode(eo[0]), ut.mode(eo[1])) in G_super_od.pmx):
-                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num]])
+                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num], 'double_tx'])
                 # prevent od_cnx - transfer
                 if (ei[0].startswith('org')) & ((ut.mode(eo[0]), ut.mode(eo[1])) in G_super_od.pmx):  
-                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num]])
+                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num], 'double_tx'])
                 # prevent transfer - od_cnx
                 if ((ut.mode(ei[0]), ut.mode(ei[1])) in G_super_od.pmx) & (eo[1].startswith('dst')):  
-                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num]])   
+                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num], 'double_tx'])   
                 # alternatively, we can write this in one if statement *i think*: prevent two consecutive walking edges
                 # if G_super_od.graph.edges[ei]['mode_type'] == 'w' & G_super_od.graph.edges[eo]['mode_type'] == 'w' 
                 
                 # prevent transfer - tw - t
                 if (G_super_od.graph.edges[ei]['mode_type'] == 'w') & (eo[1].startswith('tw')):
-                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num]])
+                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num], 'double_tx'])
+                # add a -2.75 cost to account for fee-less PT transfers
+                if (n.startswith('ps')) & (ei[0].startswith('ps')) & (G_super_od.graph.edges[eo]['mode_type'] == 'board'):
+                    node_costs.append([inv_nid_map[n], link_id_map[ei_num], link_id_map[eo_num], 'pt_tx'])
 
-    df_nodecost = pd.DataFrame(node_costs, columns = ['node_ID', 'in_link_ID', 'out_link_ID'])
+    df_nodecost = pd.DataFrame(node_costs, columns = ['node_ID', 'in_link_ID', 'out_link_ID','type'])
     return df_nodecost
 
 # cwd = os.getcwd()

@@ -13,8 +13,8 @@ import yaml
 # Define parameters
 config_info = {
     'Geography': {
-        'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North',
-                           'Shadyside', 'Point Breeze'] #, 'Point Breeze North', 'Larimer']
+        'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North'],
+                           #'Shadyside'] # Shadyside #, 'Point Breeze North', 'Larimer']
                            
                            # 'Shadyside', 'South Oakland', 'Central Oakland', 'North Oakland', 'Bloomfield', 
                            # 'Friendship', 'Garfield',
@@ -37,8 +37,8 @@ config_info = {
     'Price_Params': {
         'walk': {'ppmin': 0},  # fix the scooter price back!
         'scoot': {'ppmin': 0.39, 'fixed': 1},  # $
-        'bs': {'ppmin': 20/300},
-        'TNC': {'ppmin': 0.34, 'ppmile': 0.92, 'fixed': 1.51 + 1.60, 'minfare_buffer': 8.32/4},
+        'bs': {'ppmin': 25/200},
+        'TNC': {'ppmin': 0.18, 'ppmile': 1.08, 'fixed': 2.92 + 1.53 + 1.81, 'minfare_buffer': 8.32/4},  # fixed price is: base fare + "long pickup fare" + "booking fee"
         'PT': {'fixed': 2.75},
         'pb': {'ppmin': 0},
         'zip': {'ppmin': 11/60, 'fixed_per_month': 9, 'est_num_trips': 4},
@@ -63,7 +63,7 @@ config_info = {
         'miles_in_km': 0.621371
         },
     'Time_Intervals': {
-        'interval_spacing': 30,  # sec
+        'interval_spacing': 20,  # sec
         'len_period': 60*60,  # sec
         'time_start': 7,  # AM
         'time_end': 9  # AM
@@ -127,9 +127,11 @@ config_info = {
     'Supernetwork': {
         'modes_included': ['bs', 'z', 'sc', 't', 'pt'],
         'W_tx': 0.5,  # miles,
-        'W_od': 1.0,  # miles
-	'org': [-79.94868171046522, 40.416379503934145],
-	'dst': [-79.91944888168011, 40.45228774674678] # mellon park 
+        'W_od': 0.75,  # miles
+        #'org': [-79.92963073354404, 40.406957045578174] ,  # glen hazel neighborhood
+        #'dst': [-79.9275707970418, 40.44563703158395]  # squirrel hill north neighborhood
+	    'org': [-79.94868171046522, 40.416379503934145],  # hazelwood green
+	    'dst': [-79.91944888168011, 40.45228774674678] # mellon park 
     # chatham univ: [-79.92399900719222, 40.44955761072877] 
         }  #, 'pb']}
     

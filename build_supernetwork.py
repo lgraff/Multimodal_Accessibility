@@ -52,7 +52,8 @@ def build_supernetwork(output_fpath):
     W_tx = conf.config_data['Supernetwork']['W_tx'] * conf.config_data['Conversion_Factors']['meters_in_mile']
     G_super.add_transfer_edges(W_tx)
     #G_super.gcd_dist[:3,:3]
-            
+    
+    print('supernetwork built')      
     G_super.save_object(output_fpath)
     return G_super
     #cwd = os.getcwd()

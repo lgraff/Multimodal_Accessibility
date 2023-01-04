@@ -15,7 +15,7 @@ Process street centerlines and conduct street safety analysis
     
 @author: lindsaygraff
 """
-# import libraries
+#%% import libraries
 import os
 import geopandas as gpd
 import config as conf
@@ -56,6 +56,10 @@ streets = gpd.read_file(os.path.join(cwd, 'Data', 'Input_Data', 'AlleghenyCounty
                                      'AlleghenyCounty_StreetCenterlines202208.shp')) 
 streets.to_crs('epsg:4326', inplace=True)
 study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+#%% TODO: try this new way where you buffer the study area by x miles
+x = 0.25
+# this is a buffered study area
+study_area_gdf = study_area_gdf.to_crs(crs='epsg:32128').buffer(x*1609).to_crs('EPSG:4326')  # 1609 meters/mile
 streets_clip = gpd.clip(streets, study_area_gdf).reset_index()
 
 # clean the data: 

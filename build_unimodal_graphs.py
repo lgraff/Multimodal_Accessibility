@@ -205,7 +205,7 @@ gdf_ptnodes = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x,df.y))
 gdf_ptnodes.head(3)
 #bbox_study_area = conf.study_area_gdf['geometry'].bounds.T.to_dict()[0]  # bounding box of neighborhood polygon layer
 bbox_df = study_area_gdf['geometry'].bounds
-x = 0.5
+x = 0.3 # miles
 # extend the bounds of the study area
 bbox_df['newminx'] = bbox_df['minx'] - 1/69 * x  # 1 degree/69 mile
 bbox_df['newmaxx'] = bbox_df['maxx'] + 1/69 * x

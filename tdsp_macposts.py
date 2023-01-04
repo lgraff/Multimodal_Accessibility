@@ -4,6 +4,7 @@ import MNMAPI
 import numpy as np
 import pickle
 import os
+import config as conf
 
 cwd = os.getcwd()
 #array_path = os.path.join(folder, 'macposts_files', 'macposts_arrays.npz')
@@ -21,10 +22,14 @@ def tdsp_macposts(macposts_folder, cost_arrays, inv_nid_map, timestamp):
     # load the compressed numpy arrays
     #cost_arrays = np.load(os.path.join(macposts_folder, arrays_filename))
     # for testing, only use 50 time intervals and the first 100 node costs
-    td_link_cost = cost_arrays['td_link_cost'][:, :200 + 1].copy().astype(float)  # add one for link id
-    td_link_tt = cost_arrays['td_link_tt'][:, :200 + 1].copy().astype(float)
+    num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
+
+    intervals_keep = [i for i in range(timestamp, num_intervals)]
+    #a = td_link_tt[:5, [0]+intervals_keep]
+    td_link_cost = cost_arrays['td_link_cost'][:, [0]+intervals_keep].copy().astype(float)  # add one for link id
+    td_link_tt = cost_arrays['td_link_tt'][:, [0]+intervals_keep].copy().astype(float)
     #td_link_tt[:, 1:][td_link_tt[:, 1:] <= 0] = 1
-    td_node_cost = cost_arrays['td_node_cost'][:, :200 + 3].copy().astype(float)  # add three for in_node, pass-through_node, end_node
+    td_node_cost = cost_arrays['td_node_cost'][:, [0,1,2]+intervals_keep].copy().astype(float)  # add three for in_node, pass-through_node, end_node
 
     max_interval = td_link_cost.shape[1] - 1  # subtract one for the link_id
     # print(max_interval)
@@ -51,10 +56,10 @@ def tdsp_macposts(macposts_folder, cost_arrays, inv_nid_map, timestamp):
 
     # find tdsp
     tdsp_api.build_tdsp_tree(inv_nid_map['dst'])
-    timestamp = timestamp
-    tdsp = tdsp_api.extract_tdsp(inv_nid_map['org'], timestamp)
+    new_timestamp = 0 #timestamp  because we have now turned the timestamp into the zeroth index
+    tdsp = tdsp_api.extract_tdsp(inv_nid_map['org'], new_timestamp)
     return(tdsp) #  (tdsp[:,0].tolist(), tdsp[:-1,1].tolist()))  # (node sequence, link sequence)
-    
+
     # tdsp : number of nodes * 4
     # first col: node sequence
     # second col: link sequence with last element being -1
