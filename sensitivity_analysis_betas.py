@@ -18,7 +18,8 @@ cwd = os.getcwd()
 G_super_od = macposts.compile_G_od(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'))
 
 # get the inverse nidmap
-inv_nid_map = dict(zip(G_super_od.nid_map.values(), G_super_od.nid_map.keys()))   
+nid_map = G_super_od.nid_map
+inv_nid_map = dict(zip(nid_map.values(), nid_map.keys()))   
 # get parameters
 betas = conf.config_data['Beta_Params']  
 num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
@@ -62,9 +63,9 @@ inv_link_id_map = dict(zip(link_id_map.values(), link_id_map.keys()))
 linkID_array = df_G['linkID'].to_numpy().reshape((df_G.shape[0],1))
 
 #%% # 2) create node cost file td_node_cost
-df_nodecost = macposts.create_node_cost_file(G_super_od, link_id_map, inv_nid_map).sort_values(by='type') # nodeID, inLinkID, outLinkID, cost
+df_nodecost = macposts.create_node_cost_file(G_super_od, link_id_map).sort_values(by='type') # nodeID, inLinkID, outLinkID, cost
 nodecosts_dbltx = np.full((len(df_nodecost[df_nodecost['type'] == 'double_tx']), num_intervals), 500)   # replicate the node cost for each departure interval
-nodecosts_pttx = np.full((len(df_nodecost[df_nodecost['type'] == 'pt_tx']), num_intervals), -2.75) 
+nodecosts_pttx = np.full((len(df_nodecost[df_nodecost['type'] == 'pt_tx']), num_intervals), round(-2.75/2, 2)) 
 nodecost_ids = df_nodecost[['node_ID', 'in_link_ID', 'out_link_ID']].to_numpy()
 td_node_cost = np.empty((df_nodecost.shape[0], 3 + num_intervals))
 
@@ -87,9 +88,9 @@ del td_node_cost
 #%% **THIS BEGINS THE SENSITIVITY ANALYSIS**     
 #betas['b_rel'] = 10/3600
 #betas['b_TT'] = 0/3600
-betas['b_risk'] = 0.1
+#betas['b_risk'] = 0.1
 #betas['b_disc'] = 0.1
-betas['b_rel'] = 10/3600
+#betas['b_rel'] = 10/3600
 
 # read in arrays
 files = np.load(os.path.join(cwd, 'macposts_files.npz'))
@@ -101,53 +102,66 @@ timestamp = int((60/interval_sec) * 30) # minute 30 of the hour-long interval
 all_paths = {} # form is {(beta_param_1, beta_param_2...): link_sequence}
 for b_TT in np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
     betas['b_TT'] = b_TT
-    for b_risk in np.arange(0, 0.2, 0.05): # [100/3600]: #
-        betas['b_risk'] = b_risk
-        # final link cost array is a linear combination of the individual components
-        cost_final = (betas['b_TT'] * cost_arrays['avg_TT_sec'] + betas['b_disc'] * cost_arrays['discomfort'] + betas['b_price'] * cost_arrays['price'] 
-                        + betas['b_rel'] * cost_arrays['reliability'] + betas['b_risk'] * cost_arrays['risk'])
+    for b_rel in np.arange(0, 11/3600, 2.5/3600): # [100/3600]: #
+        betas['b_rel'] = b_rel
+        for b_risk in np.arange(0, 0.5, 0.1):
+            betas['b_risk'] = b_risk
+            # final link cost array is a linear combination of the individual components
+            cost_final = (betas['b_TT'] * cost_arrays['avg_TT_sec'] + betas['b_disc'] * cost_arrays['discomfort'] + betas['b_price'] * cost_arrays['price'] 
+                            + betas['b_rel'] * cost_arrays['reliability'] + betas['b_risk'] * cost_arrays['risk'])
 
-        # Prepare additional files for compatiblity with MAC-POSTS
-        # 4) create link cost file td_link_cost
-        filename = 'td_link_cost'
-        td_link_cost = np.hstack((linkID_array, cost_final))
-        cost_array_dict = {'td_link_cost': td_link_cost, 'td_link_tt': td_link_tt, 'td_node_cost':td_node_cost}
-        # run tdsp from macposts
-        macposts_folder = os.path.join(cwd, 'macposts_files')
-        tdsp_array = tdsp.tdsp_macposts(macposts_folder, cost_array_dict, inv_nid_map, timestamp) # shortest path (node sequence)
-        # get path info
-        nid_map = G_super_od.nid_map
-        node_seq = tdsp_array[:,0]
-        link_seq = tdsp_array[:-1,1]
-        path = [nid_map[int(n)] for n in node_seq]
-        print(path)
-        all_paths[(round(b_TT,5), round(b_risk,5))] = link_seq
-        # release the memory associated with large link cost array
-        del tdsp_array
-        del cost_final
-        del td_link_cost
-        del cost_array_dict
-        gc.collect()
+            # Prepare additional files for compatiblity with MAC-POSTS
+            # 4) create link cost file td_link_cost
+            filename = 'td_link_cost'
+            td_link_cost = np.hstack((linkID_array, cost_final))
+            cost_array_dict = {'td_link_cost': td_link_cost, 'td_link_tt': td_link_tt, 'td_node_cost':td_node_cost}
+            # run tdsp from macposts
+            macposts_folder = os.path.join(cwd, 'macposts_files')
+            tdsp_array = tdsp.tdsp_macposts(macposts_folder, cost_array_dict, inv_nid_map, timestamp) # shortest path (node sequence)
+            # get path info
+            node_seq = tdsp_array[:,0]  # 
+            link_seq = tdsp_array[:-1,1]
+            path = [nid_map[int(n)] for n in node_seq]
+            print(path)
+            all_paths[(round(b_TT,5), round(b_rel,5), round(b_risk,2))] = (node_seq, link_seq)
+            # release the memory associated with large link cost array
+            del tdsp_array
+            del cost_final
+            del td_link_cost
+            del cost_array_dict
+            gc.collect()
 
 #%% Get the totals of the individual cost components
 path_costs = {} # this will be a dict of dicts
-for beta_params, link_seq in all_paths.items():
+for beta_params, (node_seq, link_seq) in all_paths.items():
     price_total, risk_total, rel_total, tt_total = 0, 0, 0, 0
     cost_total = 0
     t = timestamp
-    for l in link_seq:
+    for idx, l in enumerate(link_seq):  # the link seq
         # look up how many time intervals it takes to cross the link
         l = int(l) 
         # adjustment of time (check on this i.e. can delete?)
         if t >= num_intervals:
             t = num_intervals - 1 
         intervals_cross = td_link_tt[l,t+1]  # add one bc first col is linkID
-        node_in, node_out = inv_link_id_map[l]
+        node_in, node_out = inv_link_id_map[l]   
+        # TODO: figure out how to add node costs (below needs to be checked)
+        if idx > 0:
+            node_id = node_seq[idx]
+            in_link_id = int(link_seq[idx-1])
+            out_link_id = l
+            if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
+                nodecost = -2.75  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
+            else:
+                nodecost = 0
+        else:
+            nodecost = 0
+        # td_node_cost: nodeID, inLinkID, outLinkID
         # get the price, risk, and reliability of the link at timestamp t
         price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
         #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
         # update time and cost totals
-        price_total += price_link
+        price_total += (price_link + nodecost)
         risk_total += risk_link
         rel_total += rel_link
         tt_total += tt_link
@@ -162,12 +176,92 @@ for beta_params, link_seq in all_paths.items():
 # probably you will cross a road every 5 min? idk       
 
 # %% Just print the path 
-for params, link_seq in all_paths.items():
+for params, (node_seq, link_seq) in all_paths.items():
     print('path parms:', params)
     for l in link_seq:
         l = int(l)
         node_in, node_out = inv_link_id_map[l]
         print(nid_map[node_in], nid_map[node_out])
     print('********************')
+
+# %%
+from itertools import islice
+
+def take(n, iterable):
+    """Return the first n items of the iterable as a list."""
+    return list(islice(iterable, n))
+
+all_paths_subset = take(10, path_costs.items())
+# %%
+import matplotlib.pyplot as plt
+betas_used = tuple(zip(*list(zip(*all_paths_subset))[0]))
+betas_tt, betas_rel, betas_risk = betas_used
+cost_dict = list(zip(*all_paths_subset))[1]
+# %%
+all_prices = [d['price_total'] for d in cost_dict]
+all_risk = [d['risk_total'] for d in cost_dict]
+all_rel = [d['rel_total']/60 for d in cost_dict]
+all_tt = [d['tt_total']/60 for d in cost_dict]
+# %%
+
+
+x_axis = list(zip(*all_paths_subset))[0]
+fig=plt.figure() #Creates a new figure
+ax1=fig.add_subplot(111) #Plot with: 1 row, 1 column, first subplot.
+line1 = ax1.plot(all_tt,'ko-',label='line1') #no need for str(x_axis)
+line2 = ax1.plot(all_rel,'ro-',label='line2') 
+line3 = ax1.plot(all_risk,'mo-',label='line3') 
+plt.setp(ax1.get_xticklabels(), visible=True) #not ax2
+plt.xticks(range(len(all_tt)), x_axis, size='small')
+# %%
+from mpl_toolkits import mplot3d
+
+fig = plt.figure()
+ax = plt.axes(projection="3d")
+
+plt.show()
+# %%
+fig = plt.figure()
+ax = plt.axes(projection="3d")
+z_points = all_tt
+x_points = betas_tt
+y_points = betas_risk
+ax.scatter3D(x_points, y_points, z_points) #c=z_points, cmap='hsv')
+
+plt.show()
+#%%
+from matplotlib import style
+style.use('ggplot')
+fig = plt.figure()
+ax1 = fig.add_subplot(111, projection='3d')
+
+x3 = betas_tt
+y3 = betas_risk
+z3 = np.zeros(len(x3))
+
+dx = 0 #0.01*np.ones(len(x3))
+dy = 0.01*np.ones(len(x3))
+dz = all_tt
+
+ax1.bar3d(x3, y3, z3, dx, dy, dz)
+
+
+ax1.set_xlabel('beta_tt')
+ax1.set_ylabel('beta_risk')
+ax1.set_zlabel('travel time total')
+
+plt.show()
+# %%
+# make data
+X, Y = np.meshgrid(np.linspace(-3, 3, 256), np.linspace(-3, 3, 256))
+Z = (1 - X/2 + X**5 + Y**3) * np.exp(-X**2 - Y**2)
+levels = np.linspace(np.min(Z), np.max(Z), 7)
+
+# plot
+fig, ax = plt.subplots()
+
+ax.contour(X, Y, Z, levels=levels)
+
+plt.show()
 
 # %%

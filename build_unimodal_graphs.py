@@ -247,6 +247,7 @@ nx.set_edge_attributes(G_pt, edge_dict)
 #%% SCOOTER graph:
     # Attributes: TT, reliability ,risk,
 G_sc = G_bike.copy()
+#TODO: filter out streets with speed limit > 25
 G_sc = ut.rename_nodes(G_sc, 'sc')
 nx.set_node_attributes(G_sc, 'sc', 'nwk_type')
 nx.set_edge_attributes(G_sc, 'sc', 'mode_type')

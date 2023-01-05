@@ -157,7 +157,8 @@ def create_td_cost_arrays(G_super_od):
     return cost_attr_df_dict
 
 # returns the node cost df where each row has the following form: node_id, in_linkID, out_linkID, cost
-def create_node_cost_file(G_super_od, link_id_map, inv_nid_map):
+def create_node_cost_file(G_super_od, link_id_map):
+    inv_nid_map = dict(zip(G_super_od.nid_map.values(), G_super_od.nid_map.keys()))
     link_id_map = link_id_map #dict(zip(tuple(zip(df_G['source'], df_G['target'])), df_G['linkID']))
     node_costs = []
     for n in list(G_super_od.graph.nodes):
