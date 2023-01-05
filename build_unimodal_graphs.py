@@ -291,7 +291,7 @@ G_z = ut.add_depots_cnx_edges(gdf_parking_nodes, gdf_drive_nodes, 'kz', 'z', 'zi
 G_z = ut.add_depots_cnx_edges(gdf_zip_clip, gdf_drive_nodes, 'zd', 'z', 'zip', num_intervals, G_z, 'from_depot')
 
 # add cost of parking to zipcar: include parking rate + rate associated with zipcar rental
-park_hours = 2
+park_hours = 0
 for e in G_z.edges:
     if e[1].startswith('kz'):  # if an edge leading into a parking node
         parking_rate = G_z.nodes[e[1]]['float_rate']  # rate per hour

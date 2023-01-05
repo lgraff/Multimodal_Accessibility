@@ -46,3 +46,4 @@ mat.npz
 old_files/
 
 # Ignore
+all_paths_v2.pickle
