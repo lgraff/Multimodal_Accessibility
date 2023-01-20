@@ -40,7 +40,7 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
 
         
     # read in bikeshare depot locations and build connection edges
-    df_bs = pd.read_csv(os.path.join(depot_filepath))
+    df_bs = pd.read_csv(depot_filepath)
     # generate point geometry from x,y coords, so that the GIS clip function can be used to only include depots within the study region
     df_bs['geometry'] = gpd.points_from_xy(df_bs[long_colname], df_bs[lat_colname], crs="EPSG:4326")
     gdf_bs = gpd.GeoDataFrame(df_bs)  # convert to geo df

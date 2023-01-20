@@ -22,6 +22,7 @@ Discomfort_Params:
   walk: 1.1
   zip: 1
 Geography:
+  buffer: 0.5
   neighborhoods:
   - Hazelwood
   - Glen Hazel
@@ -37,7 +38,7 @@ Price_Params:
     ppmile: 1.08
     ppmin: 0.18
   bs:
-    ppmin: 0.125
+    ppmin: 0.06666666666666667
   pb:
     ppmin: 0
   pv:
@@ -97,6 +98,7 @@ Supernetwork:
   - sc
   - t
   - pt
+  num_park_hours: 2
   org:
   - -79.94868171046522
   - 40.416379503934145

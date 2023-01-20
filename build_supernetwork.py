@@ -8,6 +8,7 @@ Created on Thu Sep 22 11:52:05 2022
 
 # libraries
 import os
+import time
 from build_unimodal_graphs import G_tnc, G_pv, G_pb, G_bs, G_pt, G_sc, G_z
 print('unimodal graphs are built')
 import config as conf
@@ -61,4 +62,12 @@ def build_supernetwork(output_fpath):
 
 #%% build supernetwork, also save as pickled object for later use if necessary (avoid compiling it many times)
 cwd = os.getcwd()
+# records start time
+start = time.perf_counter()
 G_super = build_supernetwork(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl')) 
+# record end time
+end = time.perf_counter()
+ 
+# find elapsed time in seconds
+sec_elapsed = (end-start)
+print(f"Elapsed {sec_elapsed:.03f} secs.")

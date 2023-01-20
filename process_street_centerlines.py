@@ -26,6 +26,7 @@ from sklearn.neighbors import BallTree
 import copy
 import matplotlib.pyplot as plt
 import util_functions as ut
+import gc
 
 
 #%% input: source node, list of candidate nodes; output: 
@@ -56,10 +57,11 @@ streets = gpd.read_file(os.path.join(cwd, 'Data', 'Input_Data', 'AlleghenyCounty
                                      'AlleghenyCounty_StreetCenterlines202208.shp')) 
 streets.to_crs('epsg:4326', inplace=True)
 study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
-#%% TODO: try this new way where you buffer the study area by x miles
-x = 0.25
-# this is a buffered study area
-study_area_gdf = study_area_gdf.to_crs(crs='epsg:32128').buffer(x*1609).to_crs('EPSG:4326')  # 1609 meters/mile
+# #%% TODO: try this new way where you buffer the study area by x miles
+# x = conf.config_data['Geography']['buffer']  # miles
+# # this is a buffered study area
+# study_area_gdf = study_area_gdf.to_crs(crs='epsg:32128').buffer(x*1609).to_crs('EPSG:4326')  # 1609 meters/mile
+
 streets_clip = gpd.clip(streets, study_area_gdf).reset_index()
 
 # clean the data: 
@@ -74,16 +76,10 @@ streets_clip['length_meters'] = streets_clip.geometry.length
 
 #%% Vehicle safety
 # add vehicle crash data
-# get last 2 years of crash data
-site = "https://data.wprdc.org"
-crash_data_2020 = ut.get_resource_data(site,resource_id="514ae074-f42e-4bfb-8869-8d8c461dd824",count=999999999) 
-crash_data_2019 = ut.get_resource_data(site,resource_id="cb0a4d8b-2893-4d20-ad1c-47d5fdb7e8d5",count=999999999) 
+# read last two years of crash data (see: download_crash_data)
+df_crash_2020 = pd.read_csv(os.path.join(cwd,'Data','Input_Data','df_crash_2020.csv'))
+df_crash_2019 = pd.read_csv(os.path.join(cwd,'Data','Input_Data','df_crash_2019.csv'))
 
-# Convert to pandas df and concatenate
-df_crash_2020 = pd.DataFrame(crash_data_2020)
-df_crash_2019 = pd.DataFrame(crash_data_2019)
-del crash_data_2020  # deleting original data b/c large
-del crash_data_2019
 cols_keep = ['DEC_LAT', 'DEC_LONG', 'BICYCLE', 'BICYCLE_COUNT', 'PEDESTRIAN', 'PED_COUNT', 
              'SPEED_LIMIT', 'VEHICLE_COUNT', 'TOT_INJ_COUNT']
 df_crash_2020 = df_crash_2020[cols_keep]
@@ -96,6 +92,7 @@ del df_crash_2019
 gdf_crash = gpd.GeoDataFrame(df_crash, geometry=gpd.points_from_xy(x=df_crash['DEC_LONG'], y=df_crash['DEC_LAT']), 
                              crs='EPSG:4326')
 del df_crash
+gc.collect()
 gdf_crash_clip = gpd.clip(gdf_crash, study_area_gdf)  # clip to neighborhood mask
 
 # Separate crashes by bike, pedestrian, vehicle
@@ -156,6 +153,7 @@ streets_clip['bikeway_type_num'] = streets_clip['bikeway_type'].map(bike_hierarc
 
 streets_clip = streets_clip.sort_values(['OBJECTID_1', 'bikeway_type_num']).drop_duplicates(['OBJECTID_1'])
 
+#%%
 cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'length_meters', 'SPEED', 'tot_inj_sum', 'crash_count',
              'bikeway_type', 'bikelane_id']
 streets_clip = streets_clip[cols_keep]

@@ -14,6 +14,7 @@ import yaml
 config_info = {
     'Geography': {
         'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North'],
+        'buffer': 0.5 # miles
                            #'Shadyside'] # Shadyside #, 'Point Breeze North', 'Larimer']
                            
                            # 'Shadyside', 'South Oakland', 'Central Oakland', 'North Oakland', 'Bloomfield', 
@@ -37,7 +38,7 @@ config_info = {
     'Price_Params': {
         'walk': {'ppmin': 0},  # fix the scooter price back!
         'scoot': {'ppmin': 0.39, 'fixed': 1},  # $
-        'bs': {'ppmin': 25/200},
+        'bs': {'ppmin': 20/300},
         'TNC': {'ppmin': 0.18, 'ppmile': 1.08, 'fixed': 2.92 + 1.53 + 1.81, 'minfare_buffer': 8.32/4},  # fixed price is: base fare + "long pickup fare" + "booking fee"
         'PT': {'fixed': 2.75},
         'pb': {'ppmin': 0},
@@ -131,7 +132,8 @@ config_info = {
         #'org': [-79.92963073354404, 40.406957045578174] ,  # glen hazel neighborhood
         #'dst': [-79.9275707970418, 40.44563703158395]  # squirrel hill north neighborhood
 	    'org': [-79.94868171046522, 40.416379503934145],  # hazelwood green
-	    'dst': [-79.91944888168011, 40.45228774674678] # mellon park 
+	    'dst': [-79.91944888168011, 40.45228774674678], # mellon park 
+        'num_park_hours': 2 
     # chatham univ: [-79.92399900719222, 40.44955761072877] 
         }  #, 'pb']}
     

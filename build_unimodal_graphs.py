@@ -173,9 +173,9 @@ for e in G_pb.edges:
 #%% BIKESHARE graph:
     # Attributes: TT, reliability, risk, price, discomfort
     # *except* connection edges do not yet have all 5
-bs_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'pgh_bikeshare_depot_q3_2021.csv')
+bs_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'pogoh-station-locations-2022.csv') #'pgh_bikeshare_depot_q3_2021.csv')
 G_bs = build_bikeshare_graph(G_bike, bs_filepath, 'Latitude', 'Longitude', 
-                             'Station #', 'Station Name', '# of Racks', num_intervals, gdf_bike_nodes)
+                             'Id', 'Name', 'Total Docks', num_intervals, gdf_bike_nodes)
 #plot for visualization
 node_color = ['black' if n.startswith('bsd') else 'blue' for n in G_bs.nodes]
 edge_color = ['grey' if e[0].startswith('bs') and e[1].startswith('bs') else 'magenta' for e in G_bs.edges]
@@ -201,29 +201,32 @@ G_pt_full = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
 df = pd.DataFrame.from_dict(dict(G_pt_full.nodes), orient="index").reset_index()
 #gdf_pt = gpd.GeoDataFrame(data=df, geometry=df.pos)
 df[['x','y']] = pd.DataFrame(df.pos.tolist())
-gdf_ptnodes = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x,df.y))
+gdf_ptnodes = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.x,df.y), crs='EPSG:4326')
 gdf_ptnodes.head(3)
 #bbox_study_area = conf.study_area_gdf['geometry'].bounds.T.to_dict()[0]  # bounding box of neighborhood polygon layer
-bbox_df = study_area_gdf['geometry'].bounds
-x = 0.3 # miles
-# extend the bounds of the study area
-bbox_df['newminx'] = bbox_df['minx'] - 1/69 * x  # 1 degree/69 mile
-bbox_df['newmaxx'] = bbox_df['maxx'] + 1/69 * x
-bbox_df['newminy'] = bbox_df['miny'] - 1/69 * x 
-bbox_df['newmaxy'] = bbox_df['maxy'] + 1/69 * x
-# define new points that will be used to define an extended bounding box
-pt1 = geometry.Point(bbox_df.newminx, bbox_df.newminy)
-pt2 = geometry.Point(bbox_df.newminx, bbox_df.newmaxy)
-pt3 = geometry.Point(bbox_df.newmaxx, bbox_df.newmaxy)
-pt4 = geometry.Point(bbox_df.newmaxx, bbox_df.newminy)
-bbox_new = geometry.Polygon((pt1,pt2,pt3,pt4))
-bbox_new_gdf = gpd.GeoDataFrame(gpd.GeoSeries(bbox_new), columns=['geometry'])
+#bbox_df = study_area_gdf['geometry'].bounds
+x = 0.25 # miles (buffer the PT network even more than the street network b/c we can imagine the case of a bus route going outside the bounds and then returning inside)
+study_area_buffer = study_area_gdf.to_crs(crs='epsg:32128').buffer(x*1609).to_crs('EPSG:4326')  # 1609 meters/mile
 # check that this worked
 fig,ax = plt.subplots(figsize=(4,4))
 study_area_gdf.plot(ax=ax, color='blue')
-bbox_new_gdf.plot(ax=ax, color='green', alpha=.4)
+study_area_buffer.plot(ax=ax, color='green', alpha=.4)
+
+# # extend the bounds of the study area
+# bbox_df['newminx'] = bbox_df['minx'] - 1/69 * x  # 1 degree/69 mile
+# bbox_df['newmaxx'] = bbox_df['maxx'] + 1/69 * x
+# bbox_df['newminy'] = bbox_df['miny'] - 1/69 * x 
+# bbox_df['newmaxy'] = bbox_df['maxy'] + 1/69 * x
+# # define new points that will be used to define an extended bounding box
+# pt1 = geometry.Point(bbox_df.newminx, bbox_df.newminy)
+# pt2 = geometry.Point(bbox_df.newminx, bbox_df.newmaxy)
+# pt3 = geometry.Point(bbox_df.newmaxx, bbox_df.newmaxy)
+# pt4 = geometry.Point(bbox_df.newmaxx, bbox_df.newminy)
+# bbox_new = geometry.Polygon((pt1,pt2,pt3,pt4))
+# bbox_new_gdf = gpd.GeoDataFrame(gpd.GeoSeries(bbox_new), columns=['geometry'])
+
 # clip the list of all pt nodes to just those within the new bbox
-pt_graph_clip = gpd.clip(gdf_ptnodes, bbox_new_gdf)
+pt_graph_clip = gpd.clip(gdf_ptnodes, study_area_buffer)
 pt_graph_clip.set_index('index', inplace=True)
 # go back to the original PT graph, only keep nodes edges that are within the buffered bounding box
 # 1) Nodes
@@ -291,7 +294,7 @@ G_z = ut.add_depots_cnx_edges(gdf_parking_nodes, gdf_drive_nodes, 'kz', 'z', 'zi
 G_z = ut.add_depots_cnx_edges(gdf_zip_clip, gdf_drive_nodes, 'zd', 'z', 'zip', num_intervals, G_z, 'from_depot')
 
 # add cost of parking to zipcar: include parking rate + rate associated with zipcar rental
-park_hours = 0
+park_hours = conf.config_data['Supernetwork']['num_park_hours']
 for e in G_z.edges:
     if e[1].startswith('kz'):  # if an edge leading into a parking node
         parking_rate = G_z.nodes[e[1]]['float_rate']  # rate per hour

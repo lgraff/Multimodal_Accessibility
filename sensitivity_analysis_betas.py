@@ -90,7 +90,6 @@ del td_node_cost
 #betas['b_TT'] = 0/3600
 betas['b_risk'] = 0.1
 betas['b_disc'] = 0.1
-#betas['b_rel'] = 10/3600
 
 # read in arrays
 files = np.load(os.path.join(cwd, 'macposts_files.npz'))
@@ -100,9 +99,9 @@ interval_sec = conf.config_data['Time_Intervals']['interval_spacing']
 timestamp = int((60/interval_sec) * 30) # minute 30 of the hour-long interval 
 
 all_paths = {} # form is {(beta_param_1, beta_param_2...): link_sequence}
-for b_TT in [100/3600, 200/3600]: # np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
+for b_TT in np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
     betas['b_TT'] = b_TT
-    for b_rel in [100/3600, 200/3600]: # np.arange(0, 21/3600, 2.5/3600): # [100/3600]: #
+    for b_rel in np.arange(0, 2.6/3600, 2.5/3600): # [100/3600]: #
         betas['b_rel'] = b_rel
         #for b_risk in np.arange(0, 0.5, 0.1):
         #betas['b_risk'] = b_risk
@@ -123,7 +122,7 @@ for b_TT in [100/3600, 200/3600]: # np.arange(0/3600, 21/3600, 2.5/3600): #[20/3
         link_seq = tdsp_array[:-1,1]
         path = [nid_map[int(n)] for n in node_seq]
         print(path)
-        all_paths[(round(b_TT,5), round(b_rel,5))] = (node_seq, link_seq)
+        all_paths[(round(b_TT,5), round(b_rel,5))] = (node_seq, link_seq, path)
         # release the memory associated with large link cost array
         del tdsp_array
         del cost_final
@@ -133,7 +132,7 @@ for b_TT in [100/3600, 200/3600]: # np.arange(0/3600, 21/3600, 2.5/3600): #[20/3
 
 #%% Get the totals of the individual cost components
 path_costs = {} # this will be a dict of dicts
-for beta_params, (node_seq, link_seq) in all_paths.items():
+for beta_params, (node_seq, link_seq, path) in all_paths.items():
     price_total, risk_total, rel_total, tt_total = 0, 0, 0, 0
     cost_total = 0
     t = timestamp
@@ -146,15 +145,15 @@ for beta_params, (node_seq, link_seq) in all_paths.items():
         intervals_cross = td_link_tt[l,t+1]  # add one bc first col is linkID
         node_in, node_out = inv_link_id_map[l]   
         # TODO: figure out how to add node costs (below needs to be checked)
-        # if idx > 0:
-        #     node_id = node_seq[idx]
-        #     in_link_id = int(link_seq[idx-1])
-        #     out_link_id = l
-        #     if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
-        #         nodecost = -2.75  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
-        #     else:
-        #         nodecost = 0
-        # else:
+        if idx > 0:
+            node_id = node_seq[idx]
+            in_link_id = int(link_seq[idx-1])
+            out_link_id = l
+            if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
+                nodecost = round(-2.75/2, 2)  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
+            else:
+                nodecost = 0
+        #else:
         #     nodecost = 0
         # td_node_cost: nodeID, inLinkID, outLinkID
         # get the price, risk, and reliability of the link at timestamp t
@@ -168,7 +167,7 @@ for beta_params, (node_seq, link_seq) in all_paths.items():
         #cost_total += cost_link
         cost_attributes = {'price_total': price_total, 'risk_total': risk_total, 'rel_total':rel_total, 'tt_total':tt_total}
         t = t + intervals_cross  
-        print(nid_map[node_in], nid_map[node_out], price_link)
+        #print(nid_map[node_in], nid_map[node_out], price_link)
     path_costs[beta_params] = cost_attributes
 
 #TODO: assign bus alighting edge a risk of 1 (account of risk of being hit by car)  
@@ -264,4 +263,8 @@ ax.contour(X, Y, Z, levels=levels)
 
 plt.show()
 
+# %%
+for e in G_super_od.graph.edges:
+    if (e[1].startswith('dst')) and (e[0].startswith('sc')):
+        print(e)
 # %%
