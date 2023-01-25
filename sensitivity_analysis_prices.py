@@ -130,13 +130,16 @@ for sc_ppmin in [0.09, 0.14, 0.19, 0.24, 0.29, 0.34, 0.39]:
     del cost_final
     del td_link_cost
     del cost_array_dict
-    del cost_array_price
+    #del cost_array_price
     gc.collect()
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             #%% Get the totals of the individual cost components
 path_costs = {} # this will be a dict of dicts
-for beta_params, (node_seq, link_seq, path) in all_paths.items():
+for sc_ppmin, (node_seq, link_seq, path) in all_paths.items():
     price_total, risk_total, rel_total, tt_total, discomfort_total = 0, 0, 0, 0, 0
     cost_total = 0
+    price_reduction_pct = (0.39 - sc_ppmin) / 0.39  # percent reduction in scoot link cost
+    cost_array_price = cost_arrays['price'].copy()
+    cost_array_price[sc_links] = (1-price_reduction_pct) * cost_array_price[sc_links] 
     t = timestamp
     for idx, l in enumerate(link_seq):  # the link seq
         # look up how many time intervals it takes to cross the link
@@ -159,7 +162,7 @@ for beta_params, (node_seq, link_seq, path) in all_paths.items():
             nodecost = 0
         # td_node_cost: nodeID, inLinkID, outLinkID
         # get the price, risk, and reliability of the link at timestamp t
-        price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
+        price_link, risk_link, rel_link, tt_link = cost_array_price[l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
         discomfort_link = cost_arrays['discomfort'][l,t]
         #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
         # update time and cost totals
@@ -173,7 +176,9 @@ for beta_params, (node_seq, link_seq, path) in all_paths.items():
                             'tt_total':round(tt_total/60,2), 'discomfort_total': discomfort_total}
         t = t + intervals_cross  
         #print(nid_map[node_in], nid_map[node_out], price_link)
-    path_costs[beta_params] = cost_attributes   
+        #del cost_array_price
+        gc.collect()
+    path_costs[sc_ppmin] = cost_attributes   
 # %% Just print the path 
 for params, link_seq in all_paths.items():
     print('path parms:', params)
@@ -210,10 +215,10 @@ ax1.axvspan(0.14, 0.19, alpha=0.5, color='grey')
 #plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
 #plt.axvline(x=12, color='black',linestyle='--',linewidth=2)
 # distinguish region by mode type
-# ax2.text(-0.2, 33,'Public Transit &',fontsize='large', zorder=1)
-# ax2.text(1, 30,'Walking',fontsize='large', zorder=1)
-# ax2.text(7.3, 33,'Bikeshare &',fontsize='large', zorder=1)
-# ax2.text(7.9, 30,'Walking',fontsize='large', zorder=1)
+ax2.text(0.081, 33,'Scooter &',fontsize='large', zorder=1)
+ax2.text(0.086, 30,'Walking',fontsize='large', zorder=1)
+ax2.text(0.28, 33,'TNC &',fontsize='large', zorder=1)
+ax2.text(0.275, 30,'Walking',fontsize='large', zorder=1)
 # ax2.text(15.5, 33,'TNC &',fontsize='large', zorder=1)
 # ax2.text(15.2, 30,'Walking',fontsize='large', zorder=1)
 ax1.set_ylabel('Travel Time (min), Reliability (min)')
