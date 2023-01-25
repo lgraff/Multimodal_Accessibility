@@ -14,7 +14,7 @@ import yaml
 config_info = {
     'Geography': {
         'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North'],
-        'buffer': 0.5 # miles
+        'buffer': 0.25 # miles
                            #'Shadyside'] # Shadyside #, 'Point Breeze North', 'Larimer']
                            
                            # 'Shadyside', 'South Oakland', 'Central Oakland', 'North Oakland', 'Bloomfield', 
@@ -38,7 +38,7 @@ config_info = {
     'Price_Params': {
         'walk': {'ppmin': 0},  # fix the scooter price back!
         'scoot': {'ppmin': 0.39, 'fixed': 1},  # $
-        'bs': {'ppmin': 20/300},
+        'bs': {'ppmin': 25/200},
         'TNC': {'ppmin': 0.18, 'ppmile': 1.08, 'fixed': 2.92 + 1.53 + 1.81, 'minfare_buffer': 8.32/4},  # fixed price is: base fare + "long pickup fare" + "booking fee"
         'PT': {'fixed': 2.75},
         'pb': {'ppmin': 0},

@@ -57,17 +57,6 @@ def build_supernetwork(output_fpath):
     print('supernetwork built')      
     G_super.save_object(output_fpath)
     return G_super
+    
     #cwd = os.getcwd()
     #ut.save_object(G_super, os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'))
-
-#%% build supernetwork, also save as pickled object for later use if necessary (avoid compiling it many times)
-cwd = os.getcwd()
-# records start time
-start = time.perf_counter()
-G_super = build_supernetwork(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl')) 
-# record end time
-end = time.perf_counter()
- 
-# find elapsed time in seconds
-sec_elapsed = (end-start)
-print(f"Elapsed {sec_elapsed:.03f} secs.")

@@ -99,9 +99,9 @@ interval_sec = conf.config_data['Time_Intervals']['interval_spacing']
 timestamp = int((60/interval_sec) * 30) # minute 30 of the hour-long interval 
 
 all_paths = {} # form is {(beta_param_1, beta_param_2...): link_sequence}
-for b_TT in np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
+for b_TT in np.arange(0/3600, 21/3600, 1/3600): #[20/3600]: #
     betas['b_TT'] = b_TT
-    for b_rel in np.arange(0, 2.6/3600, 2.5/3600): # [100/3600]: #
+    for b_rel in np.array([2.5/3600]): # np.arange(0, 5.1/3600, 5/3600): # [100/3600]: #
         betas['b_rel'] = b_rel
         #for b_risk in np.arange(0, 0.5, 0.1):
         #betas['b_risk'] = b_risk
@@ -133,7 +133,7 @@ for b_TT in np.arange(0/3600, 21/3600, 2.5/3600): #[20/3600]: #
 #%% Get the totals of the individual cost components
 path_costs = {} # this will be a dict of dicts
 for beta_params, (node_seq, link_seq, path) in all_paths.items():
-    price_total, risk_total, rel_total, tt_total = 0, 0, 0, 0
+    price_total, risk_total, rel_total, tt_total, discomfort_total = 0, 0, 0, 0, 0
     cost_total = 0
     t = timestamp
     for idx, l in enumerate(link_seq):  # the link seq
@@ -150,22 +150,25 @@ for beta_params, (node_seq, link_seq, path) in all_paths.items():
             in_link_id = int(link_seq[idx-1])
             out_link_id = l
             if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
-                nodecost = round(-2.75/2, 2)  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
+                nodecost = -2.75 #round(-2.75/2, 2)  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
             else:
                 nodecost = 0
-        #else:
-        #     nodecost = 0
+        else:
+            nodecost = 0
         # td_node_cost: nodeID, inLinkID, outLinkID
         # get the price, risk, and reliability of the link at timestamp t
         price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
+        discomfort_link = cost_arrays['discomfort'][l,t]
         #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
         # update time and cost totals
-        price_total += (price_link) #+ nodecost)
+        price_total += (price_link + nodecost)
         risk_total += risk_link
         rel_total += rel_link
         tt_total += tt_link
+        discomfort_total += discomfort_link
         #cost_total += cost_link
-        cost_attributes = {'price_total': price_total, 'risk_total': risk_total, 'rel_total':rel_total, 'tt_total':tt_total}
+        cost_attributes = {'price_total': price_total, 'risk_total': risk_total, 'rel_total':round(rel_total/60,2), 
+                            'tt_total':round(tt_total/60,2), 'discomfort_total': discomfort_total}
         t = t + intervals_cross  
         #print(nid_map[node_in], nid_map[node_out], price_link)
     path_costs[beta_params] = cost_attributes
@@ -175,7 +178,7 @@ for beta_params, (node_seq, link_seq, path) in all_paths.items():
 # probably you will cross a road every 5 min? idk       
 
 # %% Just print the path 
-for params, (node_seq, link_seq) in all_paths.items():
+for params, (node_seq, link_seq, path) in all_paths.items():
     print('path parms:', params)
     for l in link_seq:
         l = int(l)
@@ -183,36 +186,62 @@ for params, (node_seq, link_seq) in all_paths.items():
         print(nid_map[node_in], nid_map[node_out])
     print('********************')
 
+# hardcode the mode types
+mode_types = ['PT']*7 + ['bs']*6 + ['t']*8
+
 # %%
-from itertools import islice
+# from itertools import islice
 
-def take(n, iterable):
-    """Return the first n items of the iterable as a list."""
-    return list(islice(iterable, n))
+# def take(n, iterable):
+#     """Return the first n items of the iterable as a list."""
+#     return list(islice(iterable, n))
 
-all_paths_subset = take(10, path_costs.items())
+# #all_paths_subset = take(10, path_costs.items())
 # %%
 import matplotlib.pyplot as plt
-betas_used = tuple(zip(*list(zip(*all_paths_subset))[0]))
-betas_tt, betas_rel, betas_risk = betas_used
-cost_dict = list(zip(*all_paths_subset))[1]
-# %%
+betas_used = list(zip(*list(path_costs.keys()))) # tuple(zip(*list(zip(*path_costs))[0]))
+betas_tt = betas_used[0]
+#betas_rel = betas_used[1]
+cost_dict = list(path_costs.values())
+
 all_prices = [d['price_total'] for d in cost_dict]
 all_risk = [d['risk_total'] for d in cost_dict]
-all_rel = [d['rel_total']/60 for d in cost_dict]
-all_tt = [d['tt_total']/60 for d in cost_dict]
-# %%
+all_rel = [d['rel_total'] for d in cost_dict]
+all_tt = [d['tt_total'] for d in cost_dict]
+all_disc = [d['discomfort_total'] for d in cost_dict]
+
+x_axis = np.array(betas_tt)*3600
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+
+ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0)
+ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0)
+ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0)
+ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0)
+ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0)
+plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
+plt.axvline(x=13, color='black',linestyle='--',linewidth=2)
+# distinguish region by mode type
+ax2.text(0.2,30,'Public Transit',fontsize='large', zorder=1)
+ax2.text(7.8,30,'Bikeshare',fontsize='large', zorder=1)
+ax2.text(16.5,30,'TNC',fontsize='large', zorder=1)
+ax1.set_ylabel('Travel Time (min), Reliability (min)')
+ax2.set_ylabel('Price ($), Risk, Discomfort')
+ax1.set_xlabel(r'$\beta_{TT}\ (\$/$min)')   #$\beta_{TT}$')
+ax2.legend(loc='upper right')
+ax1.legend(loc='upper left')
+ax2.set_xticks(np.arange(0,22,2), fontsize=10)
+ax1.set_yticks(np.arange(0,240,20), fontsize=6)
+ax2.set_yticks(np.arange(0,70,5), fonrtsize=6)
+#plt.setp(ax1.get_xticklabels(), visible=True) #not ax2
+#plt.xticks(range(len(all_tt)), x_axis, size='small')
+# %% alternatively: 
+fig, ax = plt.subplots() #1,5, figsize=(8,6))
+ax.bar(betas_tt, all_prices)
+
+#%%
 
 
-x_axis = list(zip(*all_paths_subset))[0]
-fig=plt.figure() #Creates a new figure
-ax1=fig.add_subplot(111) #Plot with: 1 row, 1 column, first subplot.
-line1 = ax1.plot(all_tt,'ko-',label='line1') #no need for str(x_axis)
-line2 = ax1.plot(all_rel,'ro-',label='line2') 
-line3 = ax1.plot(all_risk,'mo-',label='line3') 
-plt.setp(ax1.get_xticklabels(), visible=True) #not ax2
-plt.xticks(range(len(all_tt)), x_axis, size='small')
-# %%
 from mpl_toolkits import mplot3d
 
 fig = plt.figure()
@@ -265,6 +294,6 @@ plt.show()
 
 # %%
 for e in G_super_od.graph.edges:
-    if (e[1].startswith('dst')) and (e[0].startswith('sc')):
+    if (e[1].startswith('dst')) and (e[0].startswith('bs')):
         print(e)
 # %%
