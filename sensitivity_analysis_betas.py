@@ -54,7 +54,7 @@ log = f.readlines()
 f.close()
 log.insert(0, 'EdgeId	FromNodeId	ToNodeId\n')
 f = open(os.path.join(folder, filename), 'w')
-f.writelines(log)
+f.writelines(log)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
 f.close()
 
 # match a link ID to a (source, target) pair
@@ -84,7 +84,6 @@ td_link_tt[:, 1:][td_link_tt[:, 1:] <= 0] = 1
 # save cost_arrays, td_node_cost, td_link_tt for later use
 np.savez_compressed(os.path.join(cwd, 'macposts_files'), td_link_tt=td_link_tt, td_node_cost=td_node_cost)
 del td_node_cost
-
 #%% **THIS BEGINS THE SENSITIVITY ANALYSIS**     
 #betas['b_rel'] = 10/3600
 #betas['b_TT'] = 0/3600
@@ -199,6 +198,7 @@ mode_types = ['PT']*7 + ['bs']*6 + ['t']*8
 # #all_paths_subset = take(10, path_costs.items())
 # %%
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 betas_used = list(zip(*list(path_costs.keys()))) # tuple(zip(*list(zip(*path_costs))[0]))
 betas_tt = betas_used[0]
 #betas_rel = betas_used[1]
@@ -215,16 +215,24 @@ fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
 ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0)
+#ax2.plot(x_axis[7:13], all_prices[7:13], color='C0',  zorder=0)
 ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0)
 ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0)
 ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0)
 ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0)
-plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
-plt.axvline(x=13, color='black',linestyle='--',linewidth=2)
+# note where the mode shift occurs
+ax2.axvspan(6,7, alpha=0.5, color='grey')
+ax2.axvspan(12,13, alpha=0.5, color='grey')
+
+#plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
+#plt.axvline(x=12, color='black',linestyle='--',linewidth=2)
 # distinguish region by mode type
-ax2.text(0.2,30,'Public Transit',fontsize='large', zorder=1)
-ax2.text(7.8,30,'Bikeshare',fontsize='large', zorder=1)
-ax2.text(16.5,30,'TNC',fontsize='large', zorder=1)
+ax2.text(-0.2, 33,'Public Transit &',fontsize='large', zorder=1)
+ax2.text(1, 30,'Walking',fontsize='large', zorder=1)
+ax2.text(7.3, 33,'Bikeshare &',fontsize='large', zorder=1)
+ax2.text(7.9, 30,'Walking',fontsize='large', zorder=1)
+ax2.text(15.5, 33,'TNC &',fontsize='large', zorder=1)
+ax2.text(15.2, 30,'Walking',fontsize='large', zorder=1)
 ax1.set_ylabel('Travel Time (min), Reliability (min)')
 ax2.set_ylabel('Price ($), Risk, Discomfort')
 ax1.set_xlabel(r'$\beta_{TT}\ (\$/$min)')   #$\beta_{TT}$')
