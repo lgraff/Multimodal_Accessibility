@@ -8,6 +8,7 @@ Created on Thu Sep 22 11:52:05 2022
 
 # libraries
 import os
+import time
 from build_unimodal_graphs import G_tnc, G_pv, G_pb, G_bs, G_pt, G_sc, G_z
 print('unimodal graphs are built')
 import config as conf
@@ -52,12 +53,10 @@ def build_supernetwork(output_fpath):
     W_tx = conf.config_data['Supernetwork']['W_tx'] * conf.config_data['Conversion_Factors']['meters_in_mile']
     G_super.add_transfer_edges(W_tx)
     #G_super.gcd_dist[:3,:3]
-            
+    
+    print('supernetwork built')      
     G_super.save_object(output_fpath)
     return G_super
+    
     #cwd = os.getcwd()
     #ut.save_object(G_super, os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'))
-
-# test the function
-# cws = os.getcwd()
-# build_supernetwork()

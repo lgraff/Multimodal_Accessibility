@@ -95,15 +95,15 @@ def flatten_proj(gdfs, crs):
 #     return risk_idx
 
 def calc_bike_risk_index(row):
-    risk_mapping = {'Protected Bike Lane':1, 'Bike Lanes':1.05, 'On Street Bike Route':1.2, 
-                     'Cautionary Bike Route':1.3, 'Bikeable_Sidewalks':1.05, 'None':10000}
+    risk_mapping = {'Protected Bike Lane':1, 'Bike Lanes':1.1, 'On Street Bike Route':1.2, 
+                     'Cautionary Bike Route':1.3, 'Bikeable_Sidewalks':1.1, 'None':10000}
     risk_idx = risk_mapping[row['bikeway_type']]
     if (row['bikeway_type'] == 'None') & (row['speed_lim'] <= 15):
         risk_idx = 1
     elif (row['bikeway_type'] == 'None') & (15 < row['speed_lim'] <= 25):
         risk_idx = 1.1
     elif (row['bikeway_type'] == 'None') & (25 < row['speed_lim'] <= 35):
-        risk_idx = 1.3 
+        risk_idx = 1.4 
     elif (row['bikeway_type'] == 'None') & (row['speed_lim'] > 35):
         risk_idx = 10000
     return risk_idx
@@ -209,13 +209,16 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
     #gdf_depot_nodes = pd.concat([gdf_depot_nodes.reset_index(drop=True), nn], axis=1)[cols_keep]
     nn['id'] = nn.apply(lambda row: depot_id_prefix + str(int(row['id'])), axis=1)
     nn['nn_id'] = nn.apply(lambda row: ref_id_prefix + str(int(row['nn_id'])), axis=1)
-    # add cnx edge travel time for each time interval
+    # add cnx edge travel time 
     movement_speed = conf.config_data['Connection_Edge_Speed'][cnx_edge_movement_type]
-    cnx_attr = (nn['length_m'] / movement_speed / 60).rename('avg_TT_min')  # m / (m/s) / (60s/min)
-    cnx_attr = pd.concat([cnx_attr] * num_time_intervals, axis=1)
-    cnx_attr.columns = (['interval'+str(i) + '_' + 'avg_TT_min' for i in range(num_time_intervals)])
+    nn['0_avg_TT_sec'] = (nn['length_m'] / movement_speed)
+    
+    #cnx_attr = (nn['length_m'] / movement_speed)   #.rename('0_avg_TT_sec')  # m / (m/s) / (60s/min)
+    #cnx_attr = pd.concat([cnx_attr] * num_time_intervals, axis=1)
+    #cnx_attr.columns = (['interval'+str(i) + '_' + 'avg_TT_min' for i in range(num_time_intervals)])
+
     # these cnx edges go FROM ref network TO depot network
-    nn = pd.concat([nn, cnx_attr], axis=1)
+    #nn = pd.concat([nn, cnx_attr], axis=1)
     nn.set_index(['nn_id', 'id'], inplace=True)  # FROM ref network TO depot network
     cnx_edge_dict = nn.to_dict(orient='index')
     # also create edges FROM depot network TO ref network
@@ -274,23 +277,19 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
         price_param = conf.config_data['Price_Params']['bs']['ppmin']
           
     for e in all_cnx_edge_list:
-        G_ref.edges[e]['mode_type'] = ref_id_prefix   # this might be wrong, need to check
-        for i in range(num_time_intervals): 
-            if ref_id_prefix == 'pv':                
-                G_ref.edges[e]['interval' + str(i) + '_price'] = price_param * (
-                    G_ref.edges[e]['length_m'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
-            else:
-                G_ref.edges[e]['interval' + str(i) + '_price'] = price_param * (
-                    G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'] )
-            G_ref.edges[e]['interval' + str(i) + '_reliability'] = (conf.config_data['Reliability_Params'][cnx_edge_movement_type] *
-                                                                    G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
-            G_ref.edges[e]['interval' + str(i) + '_risk'] =  G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
-            G_ref.edges[e]['interval' + str(i) + '_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type] * 
-                                                                   G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
+        G_ref.edges[e]['mode_type'] = ref_id_prefix   
+        #for i in range(num_time_intervals): 
+        if ref_id_prefix == 'pv':                # pv usage price is determined by mileage whereas shared mode usage price determined by time
+            G_ref.edges[e]['0_price'] = price_param * (G_ref.edges[e]['length_m'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
+        else:
+            G_ref.edges[e]['0_price'] = (price_param / 60) * (G_ref.edges[e]['0_avg_TT_sec'] )
+        G_ref.edges[e]['0_reliability'] = (conf.config_data['Reliability_Params'][cnx_edge_movement_type] *
+                                                                G_ref.edges[e]['0_avg_TT_sec'])
+        G_ref.edges[e]['0_risk'] =  conf.config_data['Risk_Parameters'][cnx_edge_movement_type] #G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
+        G_ref.edges[e]['0_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type])
+                                                               #* G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
     
     return G_ref
-
-
 
 def get_coord_matrix(G):
     coords_dict = nx.get_node_attributes(G, 'pos')

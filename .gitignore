@@ -1,11 +1,49 @@
 # Ignore Data folder
-Data
+Data/
+Input_Data_zip.zip
+
+# Ignore SP and images folders
+images/
+sp_strings/
 
 # Ignore the cache folder
-cache
+cache/
 
-# Ignore pycache folder
-__pycache__
+# Ignore pycache and spyder folders
+__pycache__/
+.spyproject/
 
 # Ignore some testing files
 build_supernetwork000.py
+buildPTgraph.py
+build_super_OD.py
+main.py
+main.ipynb
+main_testing.py
+testing_unimodal.ipynb
+visualization_SP.py
+mm_graph_testing.ipynb
+tdsp_testing.ipynb
+create_td_cost_arrays.py
+
+# Ignore files produced by MAC-POSTS
+td_link_cost
+td_link_tt
+td_node_cost
+td_node_tt
+graph
+config.conf
+cost_arrays
+macposts_files.npz
+
+macposts_files/
+mat.npz
+
+# Ignore jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore old files
+old_files/
+
+# Ignore
+all_paths_v2.pickle

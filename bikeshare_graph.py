@@ -28,19 +28,19 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
     
     # add price (which is time-independent)
     for e in G_bs.edges:
-        avg_TT_min =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] / 60
-        price = conf.config_data['Price_Params']['bs']['ppmin'] * avg_TT_min  # op cost per edge (which is 0)
-        price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
-                              num_time_intervals * [price]))
-        nx.set_edge_attributes(G_bs, {e: price_attr})
+        avg_TT_sec =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] 
+        price = conf.config_data['Price_Params']['bs']['ppmin'] * (avg_TT_sec/60)  # op cost per edge (which is 0)
+##        price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
+##                              num_time_intervals * [price]))
+        nx.set_edge_attributes(G_bs, {e:  {'0_price':price}})
         
-        discomf = conf.config_data['Discomfort_Params']['bs'] * avg_TT_min
-        discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], 
-                              num_time_intervals * [discomf]))
-        nx.set_edge_attributes(G_bs, {e: discomf_attr})
+        discomf = conf.config_data['Discomfort_Params']['bs'] #* avg_TT_min
+        #discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], num_time_intervals * [discomf]))
+        nx.set_edge_attributes(G_bs, {e: {'0_discomfort':discomf}})
+
         
     # read in bikeshare depot locations and build connection edges
-    df_bs = pd.read_csv(os.path.join(depot_filepath))
+    df_bs = pd.read_csv(depot_filepath)
     # generate point geometry from x,y coords, so that the GIS clip function can be used to only include depots within the study region
     df_bs['geometry'] = gpd.points_from_xy(df_bs[long_colname], df_bs[lat_colname], crs="EPSG:4326")
     gdf_bs = gpd.GeoDataFrame(df_bs)  # convert to geo df
@@ -52,7 +52,7 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
     # join depot nodes and connection edges to the bikeshare (biking) network
     
     G_bs = ut.add_depots_cnx_edges(gdf_bs_clip, gdf_bike_network_nodes, # ['ID', name_colname, 'pos', availability_colname], 
-                                   'bsd', 'bs', 'bike', num_time_intervals, G_bs, 'both')   
+                                   'bsd', 'bs', 'bs', num_time_intervals, G_bs, 'both')   
     for n in G_bs.nodes:
         if n.startswith('bsd'):
             G_bs.nodes[n]['node_type'] = 'bsd'
