@@ -28,7 +28,7 @@ import util_functions as ut
 
 cwd = os.getcwd()
 GTFS_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'GTFS')
-headway_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv')
+headway_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv')
 traversal_time_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv')
 
 def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
@@ -165,7 +165,10 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
         if G_pt.nodes[n]['node_type'] == 'rt':  #if n.startswith('rt'):   # is a route node
             # Find associated physical stop
             split_route_node = n.split('_')
-            phys_stop = 'ps' + split_route_node[0].split('rt')[1]
+            r, d, stop = # FILL IN HERE  split_route_node[0].split('rt')[1]
+            
+            phys_stop = 'ps' + stop 
+            
             # re.sub('\D', '', string) removes letters from string
             # phys_stop = 'ps' + re.sub('\D', '', (split_route_node[0]))
 
@@ -174,8 +177,12 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
             stop_route_dir_id = split_route_node[0] + '_' + \
                 split_route_node[1] + '_' + split_route_node[2]
             #print(stop_route_dir_id)
-            headway_min = df_headway.loc[df_headway['route_node_id'] == stop_route_dir_id][
-                'headway_min'].values[0]  # headway in minutes
+
+            #headway_by_arrival_time = {}
+            df_headway_filtered = df_headway[(df_headway['route_id'] == r) & (df_headway['direction_id']==d) & (df_headway['stop_id']==stop)].sort_values(by='traveler_arrival_time')
+            headway_by_arrival_time = {[for h in df_headway_filtered.headway.values()]}
+            # headway_min = df_headway.loc[df_headway['route_node_id'] == stop_route_dir_id][
+            #     'headway_min'].values[0]  # headway in minutes
 
             # BOARDING edges
             e_board = (phys_stop, n)

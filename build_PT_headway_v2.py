@@ -105,5 +105,5 @@ next_departure = np.sort(stop_dep_times[stop_dep_times>arrival_time_at_stop])[0]
 headway = next_departure - arrival_time_at_stop  # in seconds
 
 #%%
-
+df_headway.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv'))     
 
