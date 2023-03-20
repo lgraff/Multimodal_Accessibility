@@ -5,7 +5,7 @@ Created on Thu Aug 18 17:52:13 2022
 
 @author: lindsaygraff
 """
-
+#%%
 # import libraries
 import geopandas as gpd
 import pandas as pd
@@ -40,34 +40,34 @@ num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.conf
 # read graphs that were created in 'process_street_centerlines.py'
 cwd = os.getcwd()
 with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_drive.pkl'), 'rb') as inp:
-    G_drive = pickle.load(inp)
+    G_drive = pickle.load(inp)  # can think about subsetting the attributes
 with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_bike.pkl'), 'rb') as inp:
     G_bike = pickle.load(inp)
 
+#%%
 # *idea*: let's only store the "base" travel time, i.e. at the 0th interval when TT multipler is equal to 1
 # *i think* that all other values can be derived from this one
 # DRIVE
-for e in G_drive.edges:
-    # travel time: avg_TT = TT_multiplier * (distance / speed_limit)
-    G_drive.edges[e]['0' + '_avg_TT_sec'] =  (G_drive.edges[e]['length_m'] / 
-                                                              conf.config_data['Conversion_Factors']['meters_in_mile'] /
-                                                              G_drive.edges[e]['speed_lim'] * 60 * 60)
-    # reliability
-    # (maybe: also evaluate road type i.e. residential roads may not have high reliability mult)
-    G_drive.edges[e]['0' + '_reliability'] = conf.config_data['Reliability_Params']['drive'] * G_drive.edges[e]['0' + '_avg_TT_sec']
-    # risk: we will remove the TT component
-    G_drive.edges[e]['0' + '_risk'] = G_drive.edges[e]['risk_idx_drive'] #* G_drive.edges[e]['interval' + str(i) + '_avg_TT_min']
+# for e in G_drive.edges:
+#     # travel time: avg_TT = TT_multiplier * (distance / speed_limit)
+#     G_drive.edges[e]['0' + '_avg_TT_sec'] =  (G_drive.edges[e]['length_m'] / 
+#                                                               conf.config_data['Conversion_Factors']['meters_in_mile'] /
+#                                                               G_drive.edges[e]['speed_lim'] * 60 * 60)
+#     # reliability
+#     # (maybe: also evaluate road type i.e. residential roads may not have high reliability mult)
+#     G_drive.edges[e]['0' + '_reliability'] = conf.config_data['Reliability_Params']['drive'] * G_drive.edges[e]['0' + '_avg_TT_sec']
+#     # risk: we will remove the TT component
+#     G_drive.edges[e]['0' + '_risk'] = G_drive.edges[e]['risk_idx_drive'] #* G_drive.edges[e]['interval' + str(i) + '_avg_TT_min']
 
-# BIKE
-for e in G_bike.edges:
-    # travel time: avg_TT = TT_multiplier * (distance / speed_limit)
-    G_bike.edges[e]['0' + '_avg_TT_sec'] =  (G_bike.edges[e]['length_m']/conf.config_data['Speed_Params']['bike'])  
-    # reliability
-    G_bike.edges[e]['0' + '_reliability'] = conf.config_data['Reliability_Params']['bike'] * G_bike.edges[e]['0' + '_avg_TT_sec']
-    # risk:  we will remove the TT component
-    G_bike.edges[e]['0' + '_risk'] = G_bike.edges[e]['risk_idx_bike'] #* G_bike.edges[e]['interval' + str(i) + '_avg_TT_min']
+# # BIKE
+# for e in G_bike.edges:
+#     # travel time: avg_TT = TT_multiplier * (distance / speed_limit)
+#     G_bike.edges[e]['0' + '_avg_TT_sec'] =  (G_bike.edges[e]['length_m']/conf.config_data['Speed_Params']['bike'])  
+#     # reliability
+#     G_bike.edges[e]['0' + '_reliability'] = conf.config_data['Reliability_Params']['bike'] * G_bike.edges[e]['0' + '_avg_TT_sec']
+#     # risk:  we will remove the TT component
+#     G_bike.edges[e]['0' + '_risk'] = G_bike.edges[e]['risk_idx_bike'] #* G_bike.edges[e]['interval' + str(i) + '_avg_TT_min']
 #%% create df_node files for both driving and biking
-
 
 def create_gdf_nodes(G):    
     df = pd.DataFrame.from_dict(dict(G.nodes(data=True)), orient='index')
@@ -98,14 +98,14 @@ nx.set_edge_attributes(G_tnc, 't', 'mode_type')
 G_tnc = ut.rename_nodes(G_tnc, 't')
 
 # add TNC price
-TNC_ppmile = conf.config_data['Price_Params']['TNC']['ppmile']
-TNC_ppmin = conf.config_data['Price_Params']['TNC']['ppmin']
-miles_in_km = conf.config_data['Conversion_Factors']['miles_in_km']
-for e in G_tnc.edges:
-    #for i in range(num_intervals):
-    G_tnc.edges[e]['0'+'_price'] = TNC_ppmile * miles_in_km * G_tnc.edges[e]['length_m']/1000   # $/mile * mile/km * km
-                                    # + (TNC_ppmin / 60) * G_tnc.edges[e]['0'+'_avg_TT_sec'] +                                     
-    G_tnc.edges[e]['0'+'_discomfort'] = conf.config_data['Discomfort_Params']['TNC']
+# TNC_ppmile = conf.config_data['Price_Params']['TNC']['ppmile']
+# TNC_ppmin = conf.config_data['Price_Params']['TNC']['ppmin']
+# miles_in_km = conf.config_data['Conversion_Factors']['miles_in_km']
+# for e in G_tnc.edges:
+#     #for i in range(num_intervals):
+#     G_tnc.edges[e]['0'+'_price'] = TNC_ppmile * miles_in_km * G_tnc.edges[e]['length_m']/1000   # $/mile * mile/km * km
+#                                     # + (TNC_ppmin / 60) * G_tnc.edges[e]['0'+'_avg_TT_sec'] +                                     
+#     G_tnc.edges[e]['0'+'_discomfort'] = conf.config_data['Discomfort_Params']['TNC']
 
 # ** just for testing **
 # G_tnc.add_nodes_from([('org', {'pos':(-79.94868171046522, 40.416379503934145)}),
@@ -126,15 +126,15 @@ nx.set_node_attributes(G_pv, 'pv', 'node_type')
 nx.set_edge_attributes(G_pv, 'pv', 'mode_type')
 
 # add price and dsicomfort
-meters_in_mile = conf.config_data['Conversion_Factors']['meters_in_mile']
-for e in G_pv.edges:
-    price = conf.config_data['Price_Params']['pv']['ppmile'] * (G_pv.edges[e]['length_m'] / meters_in_mile)  # op cost per edge
-    #G_pv.edges[e]['price'] = price
-    #price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_intervals)], num_intervals * [price]))
-    #nx.set_edge_attributes(G_pv, {e: price_attr})
-    #for i in range(num_intervals):
-    G_pv.edges[e]['0'+'_price'] = price
-    G_pv.edges[e]['0'+'_discomfort'] = conf.config_data['Discomfort_Params']['pv']
+# meters_in_mile = conf.config_data['Conversion_Factors']['meters_in_mile']
+# for e in G_pv.edges:
+#     price = conf.config_data['Price_Params']['pv']['ppmile'] * (G_pv.edges[e]['length_m'] / meters_in_mile)  # op cost per edge
+#     #G_pv.edges[e]['price'] = price
+#     #price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_intervals)], num_intervals * [price]))
+#     #nx.set_edge_attributes(G_pv, {e: price_attr})
+#     #for i in range(num_intervals):
+#     G_pv.edges[e]['0'+'_price'] = price
+#     G_pv.edges[e]['0'+'_discomfort'] = conf.config_data['Discomfort_Params']['pv']
 
 # join parking nodes and connection edges to the personal vehicle network
 filepath = os.path.join(cwd, 'Data', 'Output_Data')
@@ -145,6 +145,10 @@ gdf_parking_nodes.insert(0, 'id', gdf_parking_nodes.index)  # add ID to each par
 
 G_pv = ut.add_depots_cnx_edges(gdf_parking_nodes, gdf_drive_nodes, # ['ID','pos','zone','float_rate'],
                                'k', 'pv', 'pv', num_intervals, G_pv, 'to_depot')
+# rename mode_type of parking edges
+for e in G_pv.edges:
+    if e[1].startswith('k'):
+        G_pv.edges[e]['mode_type'] = 'park'
 
 #plot for visualization
 node_color = ['black' if n.startswith('pv') else 'blue' for n in G_pv.nodes]
@@ -160,15 +164,15 @@ nx.set_node_attributes(G_pb, 'pb', 'nwk_type')
 nx.set_node_attributes(G_pb, 'pb', 'node_type')
 nx.set_edge_attributes(G_pb, 'pb', 'mode_type')
 
-for e in G_pb.edges:
-    avg_TT_sec =  G_pb.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] 
-    price = conf.config_data['Price_Params']['pb']['ppmin'] * avg_TT_sec  # op cost per edge (which is 0)
-    #price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_intervals)], num_intervals * [price]))
-    nx.set_edge_attributes(G_pb, {e: {'0_price':price}})
+# for e in G_pb.edges:
+#     avg_TT_sec =  G_pb.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] 
+#     price = conf.config_data['Price_Params']['pb']['ppmin'] * avg_TT_sec  # op cost per edge (which is 0)
+#     #price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_intervals)], num_intervals * [price]))
+#     nx.set_edge_attributes(G_pb, {e: {'0_price':price}})
 
-    discomf = conf.config_data['Discomfort_Params']['pb'] #* avg_TT_min
-    #discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_intervals)], num_intervals * [discomf]))
-    nx.set_edge_attributes(G_pb, {e: {'0_discomfort':discomf}})
+#     discomf = conf.config_data['Discomfort_Params']['pb'] #* avg_TT_min
+#     #discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_intervals)], num_intervals * [discomf]))
+#     nx.set_edge_attributes(G_pb, {e: {'0_discomfort':discomf}})
 
 #%% BIKESHARE graph:
     # Attributes: TT, reliability, risk, price, discomfort
@@ -177,9 +181,9 @@ bs_filepath = os.path.join(cwd, 'Data', 'Input_Data', 'pogoh-station-locations-2
 G_bs = build_bikeshare_graph(G_bike, bs_filepath, 'Latitude', 'Longitude', 
                              'Id', 'Name', 'Total Docks', num_intervals, gdf_bike_nodes)
 #plot for visualization
-node_color = ['black' if n.startswith('bsd') else 'blue' for n in G_bs.nodes]
+node_color = ['blue' if n.startswith('bsd') else 'black' for n in G_bs.nodes]
 edge_color = ['grey' if e[0].startswith('bs') and e[1].startswith('bs') else 'magenta' for e in G_bs.edges]
-ax = ut.draw_graph(G_bs, node_color, {'road intersection':'black', 'pnr':'blue'}, edge_color, 'solid')
+ax = ut.draw_graph(G_bs, node_color, {'bike share station':'blue', 'road intersection':'black'}, edge_color, 'solid')
 ax.set_title('Bike share Network')
 # for n in G_bs.nodes:
 #     if not 'pos' in G_bs.nodes[n]:
@@ -195,8 +199,8 @@ G_pt_full = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'), 
                       os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))
 
-#%% Reduce the size of the PT network through a bounding box approach:
-    # Find the bounding box of the pgh_study_area polygon. Extend this bounding box by x miles. Then clip the PT network by this extended bounding box
+# Reduce the size of the PT network through a bounding box approach:
+# Find the bounding box of the pgh_study_area polygon. Extend this bounding box by x miles. Then clip the PT network by this extended bounding box
 
 df = pd.DataFrame.from_dict(dict(G_pt_full.nodes), orient="index").reset_index()
 #gdf_pt = gpd.GeoDataFrame(data=df, geometry=df.pos)
@@ -256,13 +260,13 @@ nx.set_node_attributes(G_sc, 'sc', 'nwk_type')
 nx.set_edge_attributes(G_sc, 'sc', 'mode_type')
 nx.set_node_attributes(G_sc, 'sc', 'node_type')# all nodes have same node type (i.e. no special nodes)
 
-# price and discomf are time-dependent
-for e in G_sc.edges:
-    #for i in range(num_intervals):
-    price = (conf.config_data['Price_Params']['scoot']['ppmin']/60) * G_sc.edges[e]['0_avg_TT_sec']  # op cost per edge
-    G_sc.edges[e]['0_price'] = price
-    #discomf = conf.config_data['Discomfort_Params']['scoot'] # * G_sc.edges[e]['interval'+str(i)+'_avg_TT_min']
-    G_sc.edges[e]['0_discomfort'] = conf.config_data['Discomfort_Params']['scoot']
+# # price and discomf are time-dependent
+# for e in G_sc.edges:
+#     #for i in range(num_intervals):
+#     price = (conf.config_data['Price_Params']['scoot']['ppmin']/60) * G_sc.edges[e]['0_avg_TT_sec']  # op cost per edge
+#     G_sc.edges[e]['0_price'] = price
+#     #discomf = conf.config_data['Discomfort_Params']['scoot'] # * G_sc.edges[e]['interval'+str(i)+'_avg_TT_min']
+#     G_sc.edges[e]['0_discomfort'] = conf.config_data['Discomfort_Params']['scoot']
 
 #%% ZIPCAR (or generally, carshare) graph
 # read data which was obtained from Google MyMaps
@@ -281,25 +285,30 @@ nx.set_node_attributes(G_z, 'z', 'node_type')
 nx.set_edge_attributes(G_z, 'z', 'mode_type')
 
 # add price and discomf attributes, which are time-dep 
-for e in G_z.edges:
-    #for i in range(num_intervals):
-    price = (conf.config_data['Price_Params']['zip']['ppmin']/60) * G_z.edges[e]['0_avg_TT_sec']  # op cost per edge
-    G_z.edges[e]['0_price'] = price
-    #discomf = conf.config_data['Discomfort_Params']['zip'] * G_z.edges[e]['interval'+str(i)+'_avg_TT_min']
-    G_z.edges[e]['0_discomfort'] = conf.config_data['Discomfort_Params']['zip']
+# for e in G_z.edges:
+#     #for i in range(num_intervals):
+#     price = (conf.config_data['Price_Params']['zip']['ppmin']/60) * G_z.edges[e]['0_avg_TT_sec']  # op cost per edge
+#     G_z.edges[e]['0_price'] = price
+#     #discomf = conf.config_data['Discomfort_Params']['zip'] * G_z.edges[e]['interval'+str(i)+'_avg_TT_min']
+#     G_z.edges[e]['0_discomfort'] = conf.config_data['Discomfort_Params']['zip']
 
 # add parking cnx edges
 G_z = ut.add_depots_cnx_edges(gdf_parking_nodes, gdf_drive_nodes, 'kz', 'z', 'zip', num_intervals, G_z, 'to_depot')
 # add depot cnx edges
 G_z = ut.add_depots_cnx_edges(gdf_zip_clip, gdf_drive_nodes, 'zd', 'z', 'zip', num_intervals, G_z, 'from_depot')
 
-# add cost of parking to zipcar: include parking rate + rate associated with zipcar rental
-park_hours = conf.config_data['Supernetwork']['num_park_hours']
+# rename mode_type of parking edges
 for e in G_z.edges:
-    if e[1].startswith('kz'):  # if an edge leading into a parking node
-        parking_rate = G_z.nodes[e[1]]['float_rate']  # rate per hour
-        zip_rate = conf.config_data['Price_Params']['zip']['ppmin']*60 # zip rate per hour
-        G_z.edges[e]['0_price'] = park_hours * (parking_rate + zip_rate)
+    if e[1].startswith('k'):
+        G_z.edges[e]['mode_type'] = 'park'
+
+# # add cost of parking to zipcar: include parking rate + rate associated with zipcar rental
+# park_hours = conf.config_data['Supernetwork']['num_park_hours']
+# for e in G_z.edges:
+#     if e[1].startswith('kz'):  # if an edge leading into a parking node
+#         parking_rate = G_z.nodes[e[1]]['float_rate']  # rate per hour
+#         zip_rate = conf.config_data['Price_Params']['zip']['ppmin']*60 # zip rate per hour
+#         G_z.edges[e]['0_price'] = park_hours * (parking_rate + zip_rate)
         
 # plot for visualization
 node_color = ['blue' if n.startswith('zd') else 'red' if n.startswith('k') else 'black' for n in G_z.nodes]

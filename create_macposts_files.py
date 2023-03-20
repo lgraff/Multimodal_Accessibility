@@ -1,6 +1,7 @@
 
 # description of file:
 
+#%%
 # libraries 
 import networkx as nx
 import pickle
@@ -19,6 +20,18 @@ def compile_G_od(path):
     G_od = od_cnx(path,conf.config_data['Supernetwork']['org'],conf.config_data['Supernetwork']['dst'])
     return G_od
 
+cwd = os.getcwd()
+G_super_od = compile_G_od(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'))
+
+#%%
+df_G_super_od = nx.to_pandas_edgelist(G_super_od.graph)
+# read in tt_ratio, reliability_ratio, and PT_headway files
+df_tt_ratio = pd.read_csv(os.path.join(cwd,'Data','Output_Data','intraday_travel_time_ratio.csv'))
+df_rel_ratio = pd.read_csv(os.path.join(cwd,'Data','Output_Data','reliability_ratio.csv'))
+df_pt_headway = pd.read_csv(os.path.join(cwd,'Data','Output_Data','PT_headway.csv'))
+
+
+#%%
 # create time-dependent cost dfs for the individual cost components
 # output is a dict of the form: {cost_component: td_cost_df}
 # the cost df has dimensions (num_links x (3 + num_time_intervals)), wheret the 3 add'l columns are due to presence of source, target, mode_type

@@ -83,6 +83,12 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     streets_clip.to_crs(crs='epsg:32128', inplace=True)
     streets_clip['length_meters'] = streets_clip.geometry.length
 
+    # map road class to frc for compatibility with inrix
+    FCC_roadclass_dict = {'A31':'secondary', 'A41':'local', 'A33':'secondary', 'A32':'secondary', 'A61':'local', 'A42':'local', 'A74':'local',
+                'A63':'local', 'A62':'local', 'A21':'highway', 'A11':'highway', 'A64':'local', 'A99':'local', 'A71':0, 'A72':0, 'A73':0, 'H10':0}
+    roadclass_frc_map = {'highway':2, 'secondary':3, 'local':4, 0:0}
+    streets_clip['frc'] = streets_clip['FCC'].map(FCC_roadclass_dict).map(roadclass_frc_map).astype(int)
+
     #%% Vehicle safety
     # add vehicle crash data
     # read last two years of crash data (see: download_crash_data)
@@ -118,7 +124,7 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     crash_grouped.columns = ['OBJECTID_1','tot_inj_sum', 'crash_count']
     # this checks out: we see that I375 has the most crashes over the last 2 years (>100)
     streets_clip = pd.merge(streets_clip, crash_grouped, on='OBJECTID_1', how='left')
-    cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'SPEED', 'length_meters', 'tot_inj_sum', 'crash_count']
+    cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'SPEED', 'frc', 'length_meters', 'tot_inj_sum', 'crash_count']
 
     #%% Bike safety
     # join all bikelane shapefiles together. record which type of bikelane (i.e. protected, trail, etc.)
@@ -162,12 +168,9 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     streets_clip['bikeway_type_num'] = streets_clip['bikeway_type'].map(bike_hierarchy)
 
     streets_clip = streets_clip.sort_values(['OBJECTID_1', 'bikeway_type_num']).drop_duplicates(['OBJECTID_1'])
-
-    #%%
-    cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'length_meters', 'SPEED', 'tot_inj_sum', 'crash_count',
-                'bikeway_type', 'bikelane_id']
+    cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'SPEED', 'frc', 'length_meters', 'tot_inj_sum', 'crash_count']  + ['bikeway_type', 'bikelane_id']
     streets_clip = streets_clip[cols_keep]
-    streets_clip.columns = ['id', 'st_name', 'oneway', 'geometry', 'length_m', 'speed_lim', 'tot_inj_sum', 'crash_count', 'bikeway_type', 'bikelane_id']
+    streets_clip.columns = ['id', 'st_name', 'oneway', 'geometry', 'speed_lim', 'frc', 'length_m', 'tot_inj_sum', 'crash_count', 'bikeway_type', 'bikelane_id']
     streets_clip['crash_count'].fillna(value=0, inplace=True) 
     streets_clip['tot_inj_sum'].fillna(value=0, inplace=True) 
     streets_clip.reset_index(inplace=True, drop=True)
@@ -175,9 +178,6 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     # add drive risk idx and bike risk idx
     # 1) drive risk: depends only on crash; 2) bike risk: depends on bike infrastructure
     streets_clip.loc[:,'crash_per_meter'] = (streets_clip['crash_count'] / streets_clip['length_m'])
-    streets_clip.loc[:,'risk_idx_drive'] = 1 + conf.config_data['Risk_Parameters']['crash_weight'] * streets_clip['crash_per_meter']
-    streets_clip['risk_idx_bike'] = streets_clip.apply(lambda row: ut.calc_bike_risk_index(row), axis=1)
-
 
     #%%
     # fig, ax = plt.subplots()

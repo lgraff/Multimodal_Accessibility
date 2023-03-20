@@ -79,15 +79,16 @@ def gen_data(G_superntwk, n_days, n_intervals, n_obs, od_cnx=False): #, avg_bike
             
             mean_min_dist = np.mean(all_min_dist)  # mean distance from node n to any scooter in past "n_days" days
             p95 = np.percentile(all_min_dist, 95)  # 95th percentile distance from node n to any scooter in past "n_days" days
-            
-            node_cost_dict[n] = {str(i)+'_avg_TT_sec': (mean_min_dist / conf.config_data['Speed_Params']['walk']),
-                                               str(i)+'_price': conf.config_data['Price_Params']['scoot']['fixed'],
-                                               str(i)+'_reliability': p95 / conf.config_data['Speed_Params']['walk'],
-                                               'risk_idx': 1,
-                                               str(i)+'_risk': 1,
-                                              'mode_type': 'w',
-                                               str(i)+'_discomfort': conf.config_data['Discomfort_Params']['walk'],
-                                               'etype': 'transfer'}   
+            node_cost_dict[n] = {'length_m': mean_min_dist, '95_length_m': p95, 'mode_type':'w', 'etype':'transfer'}
+
+            # node_cost_dict[n] = {str(i)+'_avg_TT_sec': (mean_min_dist / conf.config_data['Speed_Params']['walk']),
+            #                                    str(i)+'_price': conf.config_data['Price_Params']['scoot']['fixed'],
+            #                                    str(i)+'_reliability': p95 / conf.config_data['Speed_Params']['walk'],
+            #                                    'risk_idx': 1,
+            #                                    str(i)+'_risk': 1,
+            #                                   'mode_type': 'w',
+            #                                    str(i)+'_discomfort': conf.config_data['Discomfort_Params']['walk'],
+            #                                    'etype': 'transfer'}   
 
         for node, cost_dict in node_cost_dict.items():
             all_costs[node].update(cost_dict) 

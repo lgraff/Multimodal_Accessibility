@@ -211,7 +211,7 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
     nn['nn_id'] = nn.apply(lambda row: ref_id_prefix + str(int(row['nn_id'])), axis=1)
     # add cnx edge travel time 
     movement_speed = conf.config_data['Connection_Edge_Speed'][cnx_edge_movement_type]
-    nn['0_avg_TT_sec'] = (nn['length_m'] / movement_speed)
+    nn['avg_TT_sec'] = (nn['length_m'] / movement_speed) # can probably delete this and move to final pandas calc
     
     #cnx_attr = (nn['length_m'] / movement_speed)   #.rename('0_avg_TT_sec')  # m / (m/s) / (60s/min)
     #cnx_attr = pd.concat([cnx_attr] * num_time_intervals, axis=1)
@@ -268,26 +268,27 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
         (e[0].startswith(depot_id_prefix) & e[1].startswith(ref_id_prefix)) | 
         (e[0].startswith(ref_id_prefix) & e[1].startswith(depot_id_prefix)))]
     
-    # obtain proper price parameter
-    if ref_id_prefix == 'z':
-        price_param = conf.config_data['Price_Params']['zip']['ppmin']
-    elif ref_id_prefix == 'pv':
-        price_param = conf.config_data['Price_Params']['pv']['ppmile']
-    elif ref_id_prefix == 'bs':
-        price_param = conf.config_data['Price_Params']['bs']['ppmin']
+    # # obtain proper price parameter
+    # if ref_id_prefix == 'z':
+    #     price_param = conf.config_data['Price_Params']['zip']['ppmin']
+    # elif ref_id_prefix == 'pv':
+    #     price_param = conf.config_data['Price_Params']['pv']['ppmile']
+    # elif ref_id_prefix == 'bs':
+    #     price_param = conf.config_data['Price_Params']['bs']['ppmin']
           
     for e in all_cnx_edge_list:
-        G_ref.edges[e]['mode_type'] = ref_id_prefix   
-        #for i in range(num_time_intervals): 
-        if ref_id_prefix == 'pv':                # pv usage price is determined by mileage whereas shared mode usage price determined by time
-            G_ref.edges[e]['0_price'] = price_param * (G_ref.edges[e]['length_m'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
-        else:
-            G_ref.edges[e]['0_price'] = (price_param / 60) * (G_ref.edges[e]['0_avg_TT_sec'] )
-        G_ref.edges[e]['0_reliability'] = (conf.config_data['Reliability_Params'][cnx_edge_movement_type] *
-                                                                G_ref.edges[e]['0_avg_TT_sec'])
-        G_ref.edges[e]['0_risk'] =  conf.config_data['Risk_Parameters'][cnx_edge_movement_type] #G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
-        G_ref.edges[e]['0_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type])
-                                                               #* G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
+        G_ref.edges[e]['mode_type'] = ref_id_prefix   # surely a more efficient way to do this
+
+        # #for i in range(num_time_intervals): 
+        # if ref_id_prefix == 'pv':                # pv usage price is determined by mileage whereas shared mode usage price determined by time
+        #     G_ref.edges[e]['0_price'] = price_param * (G_ref.edges[e]['length_m'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
+        # else:
+        #     G_ref.edges[e]['0_price'] = (price_param / 60) * (G_ref.edges[e]['0_avg_TT_sec'] )
+        # G_ref.edges[e]['0_reliability'] = (conf.config_data['Reliability_Params'][cnx_edge_movement_type] *
+        #                                                         G_ref.edges[e]['0_avg_TT_sec'])
+        # G_ref.edges[e]['0_risk'] =  conf.config_data['Risk_Parameters'][cnx_edge_movement_type] #G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
+        # G_ref.edges[e]['0_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type])
+        #                                                        #* G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
     
     return G_ref
 

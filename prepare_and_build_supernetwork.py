@@ -43,10 +43,9 @@ process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash_out
 print('street centerlines processed')
 
 # build supernetwork: save as pickled object for later use if necessary (avoid compiling it many times)
-from build_supernetwork import build_supernetwork
+from build_supernetwork import build_supernetwork  # keep this line here, do not move to the top of script
 start = time.perf_counter() # records start time
 G_super = build_supernetwork(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl')) 
-#print('supernetwork built')
 end = time.perf_counter()  # record end time
 sec_elapsed = (end-start) # find elapsed time in seconds
 print(f"Elapsed {sec_elapsed:.03f} secs.")

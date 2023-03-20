@@ -9,6 +9,7 @@ Created on Thu Sep  1 11:22:59 2022
 import geopandas as gpd
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 import networkx as nx 
 import util_functions as ut
 import config as conf
@@ -26,17 +27,17 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
     nx.set_edge_attributes(G_bs, 'bs', 'mode_type')
     G_bs = ut.rename_nodes(G_bs, 'bs')
     
-    # add price (which is time-independent)
-    for e in G_bs.edges:
-        avg_TT_sec =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] 
-        price = conf.config_data['Price_Params']['bs']['ppmin'] * (avg_TT_sec/60)  # op cost per edge (which is 0)
-##        price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
-##                              num_time_intervals * [price]))
-        nx.set_edge_attributes(G_bs, {e:  {'0_price':price}})
+#     # add price (which is time-independent)
+#     for e in G_bs.edges:
+#         avg_TT_sec =  G_bs.edges[e]['length_m'] / conf.config_data['Speed_Params']['bike'] 
+#         price = conf.config_data['Price_Params']['bs']['ppmin'] * (avg_TT_sec/60)  # op cost per edge (which is 0)
+# ##        price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(num_time_intervals)], 
+# ##                              num_time_intervals * [price]))
+#         nx.set_edge_attributes(G_bs, {e:  {'0_price':price}})
         
-        discomf = conf.config_data['Discomfort_Params']['bs'] #* avg_TT_min
-        #discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], num_time_intervals * [discomf]))
-        nx.set_edge_attributes(G_bs, {e: {'0_discomfort':discomf}})
+#         discomf = conf.config_data['Discomfort_Params']['bs'] #* avg_TT_min
+#         #discomf_attr = dict(zip(['interval'+str(i)+'_discomfort' for i in range(num_time_intervals)], num_time_intervals * [discomf]))
+#         nx.set_edge_attributes(G_bs, {e: {'0_discomfort':discomf}})
 
         
     # read in bikeshare depot locations and build connection edges
@@ -47,6 +48,10 @@ def build_bikeshare_graph(G_bike, depot_filepath, lat_colname, long_colname,
     gdf_bs['pos'] = tuple(zip(gdf_bs[long_colname], gdf_bs[lat_colname]))  # add position
     # Clip the bs node network
     study_area_gdf = gpd.read_file(os.path.join(os.path.join(os.getcwd(), 'Data', 'Output_Data'), 'study_area.csv'))
+    # Check 
+    fig,ax = plt.subplots()
+    study_area_gdf.plot(ax=ax)
+    gdf_bs.plot(ax=ax, color='black')
     gdf_bs_clip = gpd.clip(gdf_bs, study_area_gdf).reset_index().drop(columns=['index']).rename(
         columns={id_colname: 'id'})
     # join depot nodes and connection edges to the bikeshare (biking) network

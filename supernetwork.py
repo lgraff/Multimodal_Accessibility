@@ -97,15 +97,16 @@ class Supernetwork:
                         fixed_price = 0   # already account for PT fixed cost in the boarding edges
                         
                         # TO DO: add inconvenience cost. or, we can embed inconvenience cost into "discomfort" attribute?
-                        attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
-                                     '0_price': fixed_price,
-                                     '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-                                     '0_risk': 1, 
-                                     '0_discomfort': conf.config_data['Discomfort_Params']['walk']}            
-                        trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}  # | operator concatenates dicts
-##                        (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-##                                                | {'mode_type':'w'}
-##                                                | {'type':etype})
+                        # attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
+                        #              '0_price': fixed_price,
+                        #              '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
+                        #              '0_risk': 1, 
+                        #              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}                                  
+                        #trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}  # | operator concatenates dicts
+                        
+                        # above, we can remove lines walk_time = 0 through fixed_price = 0
+                        attr_dict = {'length_m':self.gcd_dist[i,j], 'mode_type':'w', 'etype':etype} 
+                        trans_edges[edge] = attr_dict
 
             # now build: transfers from fixed-flex or flex-fixed                          
             # but first, remove 'pv' nodes to prevent arbitary transfers to the pv network
@@ -129,14 +130,16 @@ class Supernetwork:
                             k_name = nnName
                             edge_in = (i_name, k_name)                
                             edge_out = (k_name, i_name)
-                            walk_time = nnDist / conf.config_data['Speed_Params']['walk']  # (seconds)       dist[m] / speed [m/s] 
+                            # walk_time = nnDist / conf.config_data['Speed_Params']['walk']  # (seconds)       dist[m] / speed [m/s] 
                             # TO DO: do we want to add a "wait time" associated with scooter/bikeshare unlocking? that seems like almost too granular though
                             # consider: add fixed price (approx) of zipcar? 
-                            attr_dict = {'0_avg_TT_sec': walk_time,
-                                         '0_price': 0,
-                                         '0_reliability': (walk_time) *  conf.config_data['Reliability_Params']['walk'],
-                                         '0_risk': 1, 
-                                         '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
+                            # attr_dict = {'0_avg_TT_sec': walk_time,
+                            #              '0_price': 0,
+                            #              '0_reliability': (walk_time) *  conf.config_data['Reliability_Params']['walk'],
+                            #              '0_risk': 1, 
+                            #              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
+                            attr_dict = {'length_m':nnDist, 'mode_type':'w', 'etype':etype} 
+
                             # special cases: TNC and scooter
                             if m == 't':
                                 # transfer TO tnc: walk_edge + wait_edge
@@ -147,103 +150,37 @@ class Supernetwork:
                                                         nwk_type = 't')
                                     # add virtual waiting edge
                                     t_wait_edge = (t_virtual, k_name)
-                                    wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time']
-                                    fixed_price = conf.config_data['Price_Params']['TNC']['fixed']
-                                    rel_weight = conf.config_data['Reliability_Params']['TNC_wait']
-                                    t_wait_attr_dict = {'0_avg_TT_sec': wait_time,
-                                                        '0_price': fixed_price,
-                                                        '0_reliability': wait_time * rel_weight,
-                                                        '0_risk': 0, 
-                                                        '0_discomfort': 0}
-                                    trans_edges[t_wait_edge] = t_wait_attr_dict | {'mode_type':'t_wait'} | {'type':etype}  # waiting edge
-                                    trans_edges[(i_name,t_virtual)] = attr_dict | {'mode_type':'w'} | {'type':etype} # transfer (walking) edge
+                                    # wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time']
+                                    # fixed_price = conf.config_data['Price_Params']['TNC']['fixed']
+                                    # rel_weight = conf.config_data['Reliability_Params']['TNC_wait']
+                                    # t_wait_attr_dict = {'0_avg_TT_sec': wait_time,
+                                    #                     '0_price': fixed_price,
+                                    #                     '0_reliability': wait_time * rel_weight,
+                                    #                     '0_risk': 0, 
+                                    #                     '0_discomfort': 0}
+                                    #trans_edges[t_wait_edge] = t_wait_attr_dict | {'mode_type':'t_wait'} | {'type':etype}  # waiting edge
+
+                                    t_wait_attr_dict = {'mode_type':'t_wait', 'etype':etype}
+                                    trans_edges[t_wait_edge] = t_wait_attr_dict
+                                    trans_edges[(i_name,t_virtual)] = attr_dict # transfer (walking) edge
                                 # when transferring FROM tnc, use nearest neighbor distance b/c ride tnc to closest pickup point for next mode
                                 if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  
-                                    trans_edges[edge_out] = attr_dict | {'mode_type':'w'} | {'type':etype}
+                                    trans_edges[edge_out] = attr_dict 
                             elif m == 'sc':
                                 if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
                                     scoot_attr_dict = sc_costs[i_name]
-                                    scoot_attr_dict['type'] = etype
                                     trans_edges[edge_in] = scoot_attr_dict # when transferring TO scooter, assign costs that were generated (simulated) using fake historical data      
                                 # when transferring FROM scooter, use nearest neighbor distance b/c ride scooter to closest pickup point for next mode
                                 if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  
-                                    trans_edges[edge_out] = attr_dict | {'mode_type':'w'} | {'type':etype}
+                                    trans_edges[edge_out] = attr_dict 
                             else:
                                 if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
-                                    trans_edges[edge_in] = attr_dict | {'mode_type':'w'} | {'type':etype}  
+                                    trans_edges[edge_in] = attr_dict
                                 if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  
-                                    trans_edges[edge_out] = attr_dict | {'mode_type':'w'} | {'type':etype}
+                                    trans_edges[edge_out] = attr_dict 
         self.transfer_edges = trans_edges  # for testing purposes so we can access the tx edges directly
         # now add the transfer edges to the supernetwork
         trans_edges = [(e[0], e[1], trans_edges[e])for e in trans_edges.keys()]
         self.graph.add_edges_from(trans_edges)
-
-
-        #                     if m != 'sc':  
-        #                        # separately check if edge_in / edge_out is allowed
-        #                        # fix to flex
-        #                         if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
-        #                             trans_edges[edge_in] = attr_dict | {'mode_type':'w'} | {'type':etype}                                                                   
-
-        #                             # special case:
-        #                             # if transferring to TNC, build a virtual TNC node and associated waiting edge between virtual & physical
-        #                             if ut.mode(k_name) == 't':
-        #                                 # add virtual TNC node
-        #                                 t_virtual = 'tw' + re.sub(r'[a-zA-Z]', '', k_name)
-        #                                 self.graph.add_node(t_virtual, node_type='tw', pos=self.graph.nodes[k_name]['pos'],
-        #                                                     nwk_name = 't')
-        #                                 # add virtual waiting edge
-        #                                 t_wait_edge = (t_virtual, k_name)
-        #                                 wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time']
-        #                                 fixed_price = conf.config_data['Price_Params']['TNC']['fixed']
-        #                                 rel_weight = conf.config_data['Reliability_Params']['TNC_wait']
-        #                                 t_wait_attr_dict = {'0_avg_TT_sec': wait_time,
-        #                                                      '0_price': fixed_price,
-        #                                                      '0_reliability': wait_time * rel_weight,
-        #                                                      '0_risk': 0, 
-        #                                                      '0_discomfort': 0}
-        #                                 trans_edges[t_wait_edge] = t_wait_attr_dict
-        #                         # flex to fix
-        #                         if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  # prevents (tnc-parking) transfers
-        #                             attr_dict = {'0_avg_TT_sec': walk_time,   # remove wait time
-        #                                          '0_price': fixed_price,
-        #                                          '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-        #                                          '0_risk': 1, 
-        #                                          '0_discomfort': conf.config_data['Discomfort_Params']['walk']} 
-        #                             trans_edges[edge_out] = attr_dict | {'mode_type':'w'} | {'type':etype}
-                                
-        
-        #                     else:  # mode is scooter
-        #                         if (ut.mode(i_name), ut.mode(k_name)) in self.pmx:
-        #                             scoot_attr_dict = sc_costs[i_name]
-        #                             #attr_dict =  {key: (val + inc_cost) for key, val in attr_dict.items()}  # add inconvenience cost to the cost of walking to scooter
-        #                             scoot_attr_dict['type'] = etype
-        #                             trans_edges[edge_in] = scoot_attr_dict # when transferring TO scooter, assign costs that were generated (simulated) using fake historical data
-        
-        #                         # when transferring FROM scooter, use nearest neighbor distance b/c ride scooter to closest pickup point for next mode
-        #                         if (ut.mode(k_name), ut.mode(i_name)) in self.pmx:  
-        #                             attr_dict = {'0_avg_TT_sec': walk_time,   # remove wait time
-        #                                                 '0_price': fixed_price,
-        #                                                 '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-        #                                                 '0_risk': 1, 
-        #                                                 '0_discomfort': conf.config_data['Discomfort_Params']['walk']} 
-        #                             trans_edges[edge_out] = attr_dict | {'mode_type':'w'} | {'type':etype}
-                                    
-        # self.transfer_edges = trans_edges  # for testing purposes so we can access the tx edges directly
-        # # now add the transfer edges to the supernetwork
-        # trans_edges = [(e[0], e[1], trans_edges[e])for e in trans_edges.keys()]
-        # self.graph.add_edges_from(trans_edges)
-
-
-##                                    attr_dict = {'avg_TT_min': walk_time + wait_time,
-##                                                 'price': fixed_price,
-##                                                 'reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-##                                                 #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1
-##                                                 'risk': 1 * ( walk_time + wait_time),
-##                                                 'discomfort': conf.config_data['Discomfort_Params']['walk'] * walk_time} 
-##                                                 #'type': etype,
-##                                                 #'mode_type': 'w'} 
-##                                    trans_edges[edge_in] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-##                                                            | {'mode_type':'w'}
-##                                                            | {'type':etype})        
+   
 # %%
