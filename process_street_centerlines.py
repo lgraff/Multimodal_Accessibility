@@ -83,6 +83,14 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     streets_clip.to_crs(crs='epsg:32128', inplace=True)
     streets_clip['length_meters'] = streets_clip.geometry.length
 
+    # map road class to frc for compatibility with inrix
+    FCC_roadclass_dict = {'A31':'secondary', 'A41':'local', 'A33':'secondary', 'A32':'secondary', 'A61':'local', 'A42':'local', 'A74':'local',
+                'A63':'local', 'A62':'local', 'A21':'highway', 'A11':'highway', 'A64':'local', 'A99':'local', 'A71':0, 'A72':0, 'A73':0, 'H10':0}
+    roadclass_frc_map = {'highway':2, 'secondary':3, 'local':4, 0:0}
+    streets_clip['frc'] = streets_clip['FCC'].map(FCC_roadclass_dict).map(roadclass_frc_map).astype(int)
+    streets_clip['frc'].unique()
+
+
     #%% Vehicle safety
     # add vehicle crash data
     # read last two years of crash data (see: download_crash_data)
@@ -164,10 +172,10 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     streets_clip = streets_clip.sort_values(['OBJECTID_1', 'bikeway_type_num']).drop_duplicates(['OBJECTID_1'])
 
     #%%
-    cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'length_meters', 'SPEED', 'tot_inj_sum', 'crash_count',
+    cols_keep = ['OBJECTID_1', 'ST_NAME', 'ONEWAY', 'geometry', 'length_meters', 'SPEED', 'frc', 'tot_inj_sum', 'crash_count',
                 'bikeway_type', 'bikelane_id']
     streets_clip = streets_clip[cols_keep]
-    streets_clip.columns = ['id', 'st_name', 'oneway', 'geometry', 'length_m', 'speed_lim', 'tot_inj_sum', 'crash_count', 'bikeway_type', 'bikelane_id']
+    streets_clip.columns = ['id', 'st_name', 'oneway', 'geometry', 'length_m', 'speed_lim', 'frc', 'tot_inj_sum', 'crash_count', 'bikeway_type', 'bikelane_id']
     streets_clip['crash_count'].fillna(value=0, inplace=True) 
     streets_clip['tot_inj_sum'].fillna(value=0, inplace=True) 
     streets_clip.reset_index(inplace=True, drop=True)
@@ -175,8 +183,10 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     # add drive risk idx and bike risk idx
     # 1) drive risk: depends only on crash; 2) bike risk: depends on bike infrastructure
     streets_clip.loc[:,'crash_per_meter'] = (streets_clip['crash_count'] / streets_clip['length_m'])
-    streets_clip.loc[:,'risk_idx_drive'] = 1 + conf.config_data['Risk_Parameters']['crash_weight'] * streets_clip['crash_per_meter']
-    streets_clip['risk_idx_bike'] = streets_clip.apply(lambda row: ut.calc_bike_risk_index(row), axis=1)
+
+    # OLD: calculate risk index. NEW: calculate at the end
+    #streets_clip.loc[:,'risk_idx_drive'] = 1 + conf.config_data['Risk_Parameters']['crash_weight'] * streets_clip['crash_per_meter']
+    #streets_clip['risk_idx_bike'] = streets_clip.apply(lambda row: ut.calc_bike_risk_index(row), axis=1)
 
 
     #%%
@@ -228,19 +238,21 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
         try:
             endpoints = row['geometry'].boundary.geoms
             attr_dict = streets_clip.iloc[index].to_dict()
+            # only keep a subset of relevant
+            attr_subset = {c: attr_dict[c] for c in ('id','st_name', 'oneway', 'geometry', 'length_m', 'bikeway_type', 'bikelane_id')}
             if row['oneway'] == 'FT':     
                 source = nidmap_inv[(endpoints[0].x, endpoints[0].y)]
                 target = nidmap_inv[(endpoints[1].x, endpoints[1].y)]
-                edges[(source,target)] = attr_dict
+                edges[(source,target)] = attr_subset
             if row['oneway'] == 'TF':
                 target = nidmap_inv[(endpoints[0].x, endpoints[0].y)]
                 source = nidmap_inv[(endpoints[1].x, endpoints[1].y)]
-                edges[(source,target)] = attr_dict
+                edges[(source,target)] = attr_subset
             if row['oneway'] == 'Both': 
                 node1 = nidmap_inv[(endpoints[0].x, endpoints[0].y)]
                 node2 = nidmap_inv[(endpoints[1].x, endpoints[1].y)]
-                edges[(node1,node2)] = attr_dict
-                edges[(node2,node1)] = attr_dict
+                edges[(node1,node2)] = attr_subset
+                edges[(node2,node1)] = attr_subset
         except:
             print(index)
 
@@ -282,7 +294,7 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     gdf_trails.to_crs(crs=4326, inplace=True) 
     gdf_trails = gpd.clip(gdf_trails, study_area_gdf).reset_index(drop=True)
     gdf_trails['length_m'] = gdf_trails.to_crs('epsg:32128')['geometry'].length
-    gdf_trails['speed_lim'] = 0
+    #gdf_trails['speed_lim'] = 0
 
     # find unmatched bike geoms
     # unmatched_bikelane_ids = set(gdf_bikeway.bikelane_id) - set(streets_clip_bikelane.bikelane_id)
@@ -292,78 +304,80 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
 
     # in the subsequent process, extract nodes and edges of unmatched bike geoms 
     nodes_bike = copy.deepcopy(nodes_set)
-    edges_bike = copy.deepcopy(edges)  # remember to go back and only use edges for streets_35 - actually nvm on this idea
+    edges_bike = copy.deepcopy(edges) 
 
     nidmap_bike =  copy.deepcopy(nidmap)
     nid_max = len(nodes_bike)-1
 
     # add the unmatched trail nodes, and connect to the network by edge to nn
-    for line in gdf_trails.geometry: #unmatched_gdf.geometry:
-        try:
-            endpoints = line.boundary.geoms
-            # First node
-            #nodes_bike.add((endpoints[0].x, endpoints[0].y))  # add to the node set
-            if (endpoints[0].x, endpoints[0].y) not in list(nidmap_bike.values()):
-                nidmap_bike[nid_max+1] = (endpoints[0].x, endpoints[0].y)
-            nid_max += 1
-            # find nn in node_set, and connect with an edge
-            # a future thought: do we want to only add cnx edge if closest_dist < 5m or something?
-            # https://autogis-site.readthedocs.io/en/latest/notebooks/L3/06_nearest-neighbor-faster.html: point should be in lat, long format
-            query_node_rads = np.array([endpoints[0].y, endpoints[0].x]).reshape(1,-1) * np.pi / 180
-            closest_idx, closest_dist = get_nearest(query_node_rads, nodes_gdf_radians)
-            closest_idx, closest_dist = closest_idx[0], closest_dist[0]
-            attr_dict = {'length_m': closest_dist, 'bikeway_type':'cnx', 'speed_lim':0, 'risk_idx_bike':1}
-            edges_bike[(nid_max, closest_idx)] = attr_dict
-            edges_bike[(closest_idx, nid_max)] = attr_dict
-            # Second node
-            #nodes_bike.add((endpoints[1].x, endpoints[1].y))  # add to the node set
-            if (endpoints[1].x, endpoints[1].y) not in list(nidmap_bike.values()):
-                nidmap_bike[nid_max+1] = (endpoints[1].x, endpoints[1].y)
-            nid_max += 1
-            # find nn in node_set, and connect with an edge
-            query_node_rads = np.array([endpoints[1].y, endpoints[1].x]).reshape(1,-1) * np.pi / 180
-            closest_idx, closest_dist = get_nearest(query_node_rads, nodes_gdf_radians)
-            closest_idx, closest_dist = closest_idx[0], closest_dist[0]
-            attr_dict = {'length_m': closest_dist, 'bikeway_type':'cnx', 'speed_lim':0, 'risk_idx_bike':1}
-            edges_bike[(nid_max, closest_idx)] = attr_dict
-            edges_bike[(closest_idx, nid_max)] = attr_dict 
-        except:
-            pass
-
-    # # convert to gdf
-    # nodes_bike_df = pd.DataFrame(list(nodes_bike), columns=['Long', 'Lat'])
-    # geom = gpd.points_from_xy(nodes_bike_df.Long, nodes_bike_df.Lat)
-    # nodes_bike_gdf = gpd.GeoDataFrame(nodes_bike_df, geometry=geom, crs='4326')
-    # nodes_bike_gdf['node_id'] = nodes_bike_gdf.index
+    for index, row in gdf_trails.iterrows():
+        #try:
+        endpoints = row['geometry'].boundary.geoms
+        
+        # First node
+        #nodes_bike.add((endpoints[0].x, endpoints[0].y))  # add to the node set
+        if (endpoints[0].x, endpoints[0].y) not in list(nidmap_bike.values()):
+            node1_id = nid_max+1
+            nidmap_bike[nid_max+1] = (endpoints[0].x, endpoints[0].y)
+        nid_max += 1
+        # find nn in node_set, and connect with an edge
+        # a future thought: do we want to only add cnx edge if closest_dist < 5m or something?
+        # https://autogis-site.readthedocs.io/en/latest/notebooks/L3/06_nearest-neighbor-faster.html: point should be in lat, long format
+        query_node_rads = np.array([endpoints[0].y, endpoints[0].x]).reshape(1,-1) * np.pi / 180
+        closest_idx, closest_dist = get_nearest(query_node_rads, nodes_gdf_radians)
+        closest_idx, closest_dist = closest_idx[0], closest_dist[0]
+        attr_dict = {'st_name': '', 'oneway':'Both', 'geometry':'', 'length_m': closest_dist, 'bikeway_type':'cnx', 'bikelane_id': np.nan, 'speed_lim':0}
+        edges_bike[(nid_max, closest_idx)] = attr_dict
+        edges_bike[(closest_idx, nid_max)] = attr_dict
+        
+        # Second node
+        #nodes_bike.add((endpoints[1].x, endpoints[1].y))  # add to the node set
+        if (endpoints[1].x, endpoints[1].y) not in list(nidmap_bike.values()):
+            node2_id = nid_max+1
+            nidmap_bike[nid_max+1] = (endpoints[1].x, endpoints[1].y)
+        nid_max += 1
+        # find nn in node_set, and connect with an edge
+        query_node_rads = np.array([endpoints[1].y, endpoints[1].x]).reshape(1,-1) * np.pi / 180
+        closest_idx, closest_dist = get_nearest(query_node_rads, nodes_gdf_radians)
+        closest_idx, closest_dist = closest_idx[0], closest_dist[0]
+        attr_dict = {'st_name': '', 'oneway':'Both', 'geometry':'', 'length_m': closest_dist, 'bikeway_type':'cnx', 'bikelane_id': np.nan,'speed_lim':0}
+        edges_bike[(nid_max, closest_idx)] = attr_dict
+        edges_bike[(closest_idx, nid_max)] = attr_dict 
+        
+        # add the trail edge itself 
+        # instead of using the subsequent for loop to add the trails, do it right here
+        attr_dict = gdf_trails.iloc[index].to_dict()
+        attr_dict['speed_lim'] = 0
+        attr_dict['oneway'] = 'Both'
+        attr_dict['bikelane_id'] = np.nan
+        edges_bike[(node1,node2)] = attr_dict
+        edges_bike[(node2,node1)] = attr_dict
+        # except:
+        #     pass
 
     # # make nid map
-    # nidmap_bike = dict(zip(nodes_bike_gdf.index, set(zip(nodes_bike_gdf.Long, nodes_bike_gdf.Lat))))
-    nidmap_bike_inv = dict(zip(nidmap_bike.values(), nidmap_bike.keys()))
+    #nidmap_bike_inv = dict(zip(nidmap_bike.values(), nidmap_bike.keys()))
 
     # change form of nodes for compatibility with nx
     for nid, coords in nidmap_bike.items():
         nidmap_bike[nid] = {'pos':coords}
 
-    # then add new edges and include bikeway type and length
-    for index, row in gdf_trails.iterrows():
-        try:
-            endpoints = row['geometry'].boundary.geoms        
-            node1 = nidmap_bike_inv[(endpoints[0].x, endpoints[0].y)] 
-            node2 = nidmap_bike_inv[(endpoints[1].x, endpoints[1].y)] 
-            # add edges directly 
-            attr_dict = gdf_trails.iloc[index].to_dict()
-            attr_dict['risk_idx_bike'] = 1
-            edges_bike[(node1,node2)] = attr_dict
-            edges_bike[(node2,node1)] = attr_dict
-        except:
-            pass
+    # # then add new edges and include bikeway type and length
+    # for index, row in gdf_trails.iterrows():
+    #     try:
+    #         endpoints = row['geometry'].boundary.geoms        
+    #         node1 = nidmap_bike_inv[(endpoints[0].x, endpoints[0].y)] 
+    #         node2 = nidmap_bike_inv[(endpoints[1].x, endpoints[1].y)] 
+    #         # add edges directly 
+    #         attr_dict = gdf_trails.iloc[index].to_dict()
+    #         attr_dict['risk_idx_bike'] = 1
+    #         edges_bike[(node1,node2)] = attr_dict
+    #         edges_bike[(node2,node1)] = attr_dict
+    #     except:
+    #         pass
 
 
 #%%
-# for e in edges_bike.keys():
-#     if 'type' in edges_bike[e]:
-#         print(e)
-
 # filter edges to remove those with a speed limit > 35
     all_e = list(edges_bike.keys())
     e_remove = [e for e in all_e if edges_bike[e]['speed_lim'] > 35]
@@ -372,6 +386,10 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
 
     # convert to proper form for nx
     nodes_bike_nx = list(zip(nidmap_bike.keys(), nidmap_bike.values()) )   
+    for k in edges_bike.keys():
+        attr = edges_bike[k]
+        attr_subset = {c: attr[c] for c in ('id','st_name', 'oneway', 'geometry', 'length_m', 'bikeway_type', 'bikelane_id')}
+        edges_bike[k] = attr_subset
     edges_bike_nx = list(zip(list(zip(*edges_bike.keys()))[0], list(zip(*edges_bike.keys()))[1], edges_bike.values()))
 
     # create nx graph object, complete with nodes (defined by position) and edges (defined by any selected
@@ -382,8 +400,6 @@ def process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash
     node_color = ['black']* len(list(G_bike.nodes))
     edge_color = ['grey'] * len(list(G_bike.edges))
     #ut.draw_graph(G_bike, node_color, {'int': 'blue'}, edge_color, 'solid')
-
-    # maybe could delete unused attributes from both G_drive and G_bike
 
     #%% save both graphs as pickled objects
     ut.save_object(G_drive, G_drive_output_path) 

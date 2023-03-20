@@ -5,7 +5,7 @@ Created on Mon Aug 29 17:06:08 2022
 
 @author: lindsaygraff
 """
-
+#%%
 # import libraries
 #import yaml
 #import geopandas as gpd
@@ -33,7 +33,7 @@ traversal_time_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal
 
 def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
 
-    num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
+    #num_intervals = int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1
 
     # read study area file
     # filepath = os.path.join(cwd, 'Data', 'Output_Data')
@@ -123,32 +123,13 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
         # add travel time attribute. need to look it up in the df_traversal_time dataframe
         for e in route_edges:
             trav_time_sec = df_traversal_time.loc[df_traversal_time['route_node_id'] == e[1]]['traversal_time_sec'].values[0]   # traversal time from GTFS data
-            tt_attr = {'0_avg_TT_sec': trav_time_sec}
-            price_attr = {'0_price': 0}  # the 2.75 boarding cost will be embedded in boarding edge
-            reliability_attr = {'0_reliability': conf.config_data['Reliability_Params']['PT_traversal'] * trav_time_sec}
-            risk_attr = {'0_risk': conf.config_data['Risk_Parameters']['PT_traversal']}
-            discomf_attr = {'0_discomfort': conf.config_data['Discomfort_Params']['PT_traversal']}
-            route_edges_attr.append((e[0], e[1], tt_attr | price_attr | reliability_attr | risk_attr | discomf_attr))  # | is an operator for merging dicts
-##        
-##            # add pure attributes
-##            TT_attr = dict(zip(['interval'+str(i)+'_avg_TT_min' for i in range(
-##                num_intervals)], num_intervals * [trav_time_sec/60]))
-##            price_attr = dict(zip(['interval'+str(i)+'_price' for i in range(
-##                num_intervals)], num_intervals * [0]))
-##            
-##            # add reliability, risk, and discomfort 
-##            reliability_attr = dict([('interval'+str(i)+'_reliability', 
-##                                 conf.config_data['Reliability_Params']['PT_traversal']*t
-##                                 ) for i,t in enumerate(TT_attr.values())])
-##            risk_attr = dict([('interval'+str(i)+'_risk', 
-##                          conf.config_data['Risk_Parameters']['PT_traversal']#*t  remove dependence on TT
-##                                 ) for i,t in enumerate(TT_attr.values())])
-##            discomf_attr = dict([('interval'+str(i)+'_discomfort', 
-##                                 conf.config_data['Discomfort_Params']['PT_traversal']#*t  remove dependence on TT
-##                                 ) for i,t in enumerate(TT_attr.values())])
-##
-##            route_edges_attr.append((e[0], e[1], TT_attr | price_attr | reliability_attr | risk_attr | discomf_attr))  
-            # | is an operator for merging dicts
+            tt_attr = {'avg_TT_sec': trav_time_sec}
+            #tt_attr = {'0_avg_TT_sec': trav_time_sec}
+            #price_attr = {'0_price': 0}  # the 2.75 boarding cost will be embedded in boarding edge
+            #reliability_attr = {'0_reliability': conf.config_data['Reliability_Params']['PT_traversal'] * trav_time_sec}
+            #risk_attr = {'0_risk': conf.config_data['Risk_Parameters']['PT_traversal']}
+            #discomf_attr = {'0_discomfort': conf.config_data['Discomfort_Params']['PT_traversal']}
+            route_edges_attr.append((e[0], e[1], tt_attr)) # | price_attr | reliability_attr | risk_attr | discomf_attr))  # | is an operator for merging dicts
         # add route edges to the PT graph, along with attriutes
         G_pt.add_edges_from(route_edges_attr)
 
@@ -165,49 +146,53 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
         if G_pt.nodes[n]['node_type'] == 'rt':  #if n.startswith('rt'):   # is a route node
             # Find associated physical stop
             split_route_node = n.split('_')
-            r, d, stop = # FILL IN HERE  split_route_node[0].split('rt')[1]
+            phys_stop = 'ps' + split_route_node[0].split('rt')[1]
+            #r, d, stop = # FILL IN HERE  split_route_node[0].split('rt')[1]
             
-            phys_stop = 'ps' + stop 
+            #phys_stop = 'ps' + stop 
             
             # re.sub('\D', '', string) removes letters from string
             # phys_stop = 'ps' + re.sub('\D', '', (split_route_node[0]))
 
             # Find headway associated with the route-dir-stop
             # remove stop sequence number
-            stop_route_dir_id = split_route_node[0] + '_' + \
-                split_route_node[1] + '_' + split_route_node[2]
+            # stop_route_dir_id = split_route_node[0] + '_' + \
+            #     split_route_node[1] + '_' + split_route_node[2]
             #print(stop_route_dir_id)
 
             #headway_by_arrival_time = {}
-            df_headway_filtered = df_headway[(df_headway['route_id'] == r) & (df_headway['direction_id']==d) & (df_headway['stop_id']==stop)].sort_values(by='traveler_arrival_time')
-            headway_by_arrival_time = {[for h in df_headway_filtered.headway.values()]}
+            #df_headway_filtered = df_headway[(df_headway['route_id'] == r) & (df_headway['direction_id']==d) & (df_headway['stop_id']==stop)].sort_values(by='traveler_arrival_time')
+            #headway_by_arrival_time = {[for h in df_headway_filtered.headway.values()]}
             # headway_min = df_headway.loc[df_headway['route_node_id'] == stop_route_dir_id][
             #     'headway_min'].values[0]  # headway in minutes
 
             # BOARDING edges
             e_board = (phys_stop, n)
-            # add price of one-way fare and waiting cost as headway/2; # call waiting cost "avg_TT_min" for sake of consistency in attribute definitions
-            #attr_dict = {'avg_TT_min': headway_min/2, 'price': 2.75}  # ,
+            ba_edges.append(e_board)
+          
             # add pure attributes
-            trav_time_sec = (headway_min*60) / 2 # avg wait time is defined as headway/2
-            tt_attr = {'0_avg_TT_sec': trav_time_sec}
-            price_attr = {'0_price': conf.config_data['Price_Params']['PT']['fixed']}  # the 2.75 boarding cost isembedded in boarding edge
-            reliability_attr = {'0_reliability': conf.config_data['Reliability_Params']['PT_wait'] * trav_time_sec}
-            risk_attr = {'0_risk': conf.config_data['Risk_Parameters']['PT_wait']}
-            discomf_attr = {'0_discomfort': conf.config_data['Discomfort_Params']['PT_wait']}
-            ba_edges.append((e_board[0], e_board[1],  tt_attr | price_attr | reliability_attr | risk_attr | discomf_attr | {'mode_type':'board'}))
+
+            # trav_time_sec = (headway_min*60) / 2 # avg wait time is defined as headway/2
+            # tt_attr = {'0_avg_TT_sec': trav_time_sec}
+            # price_attr = {'0_price': conf.config_data['Price_Params']['PT']['fixed']}  # the 2.75 boarding cost isembedded in boarding edge
+            # reliability_attr = {'0_reliability': conf.config_data['Reliability_Params']['PT_wait'] * trav_time_sec}
+            # risk_attr = {'0_risk': conf.config_data['Risk_Parameters']['PT_wait']}
+            # discomf_attr = {'0_discomfort': conf.config_data['Discomfort_Params']['PT_wait']}
+            # ba_edges.append((e_board[0], e_board[1],  tt_attr | price_attr | reliability_attr | risk_attr | discomf_attr | {'mode_type':'board'}))
             
             # ALIGHTING edges
             e_alight = (n, phys_stop)
+            ba_edges.append(e_alight)
+
             # alighting edge has price = 0 and TT = 0 ?
             # note: we will need to use the node cost file to remove 2.75 when going rt-ps-ps-rt
             # for now, everything is 0
-            tt_attr = {'0_avg_TT_sec': 0}
-            price_attr = {'0_price': 0}
-            reliability_attr = {'0_reliability': 0}
-            risk_attr = {'0_risk': 0}
-            discomf_attr = {'0_discomfort': 0}
-            ba_edges.append((e_alight[0], e_alight[1], tt_attr | price_attr | reliability_attr | risk_attr | discomf_attr | {'mode_type':'alight'}))
+            # tt_attr = {'0_avg_TT_sec': 0}
+            # price_attr = {'0_price': 0}
+            # reliability_attr = {'0_reliability': 0}
+            # risk_attr = {'0_risk': 0}
+            # discomf_attr = {'0_discomfort': 0}
+            # ba_edges.append((e_alight[0], e_alight[1], tt_attr | price_attr | reliability_attr | risk_attr | discomf_attr | {'mode_type':'alight'}))
 
     G_pt.add_edges_from(ba_edges)  # add board/alight edges to the graph
 
@@ -220,3 +205,6 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
     return G_pt
 
 #%% test the function
+G_pt_full = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
+                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv'), 
+                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))

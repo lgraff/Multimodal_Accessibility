@@ -96,6 +96,8 @@ betas['b_disc'] = 0.1
 files = np.load(os.path.join(cwd, 'macposts_files.npz'))
 td_link_tt = files['td_link_tt']
 td_node_cost = files['td_node_cost']
+interval_sec = conf.config_data['Time_Intervals']['interval_spacing']
+timestamp = int((60/interval_sec) * 30) # minute 30 of the hour-long interval 
 
 sc_links = [lid for link, lid in link_id_map.items() if nid_map[link[0]].startswith('sc') and nid_map[link[1]].startswith('sc')]
 
@@ -116,7 +118,7 @@ for sc_ppmin in [0.09, 0.14, 0.19, 0.24, 0.29, 0.34, 0.39]:
     cost_array_dict = {'td_link_cost': td_link_cost, 'td_link_tt': td_link_tt, 'td_node_cost':td_node_cost}
     # run tdsp from macposts
     macposts_folder = os.path.join(cwd, 'macposts_files')
-    timestamp = 5
+    #timestamp = 5
     tdsp_array = tdsp.tdsp_macposts(macposts_folder, cost_array_dict, inv_nid_map, 5) # shortest path (node sequence)
     # get path info
     nid_map = G_super_od.nid_map
@@ -207,18 +209,26 @@ ax2 = ax1.twinx()
 ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0)
 #ax2.plot(x_axis[7:13], all_prices[7:13], color='C0',  zorder=0)
 ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0)
-ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0)
+ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=1)
 ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0)
 ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0)
+
+ax2.scatter(x_axis, all_prices, s=20, color='C0',  zorder=0)
+#ax2.plot(x_axis[7:13], all_prices[7:13], color='C0',  zorder=0)
+ax2.scatter(x_axis, all_risk, s=20, color='C1',  zorder=0)
+ax1.scatter(x_axis, all_rel,  s=20, color='C4',  zorder=0)
+ax1.scatter(x_axis, all_tt,  s=20, color='C2',  zorder=0)
+ax2.scatter(x_axis, all_disc,  s=20, color='C3',  zorder=0)
+
 # note where the mode shift occurs
 ax1.axvspan(0.14, 0.19, alpha=0.5, color='grey')
 #plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
 #plt.axvline(x=12, color='black',linestyle='--',linewidth=2)
 # distinguish region by mode type
-ax2.text(0.081, 33,'Scooter &',fontsize='large', zorder=1)
-ax2.text(0.086, 30,'Walking',fontsize='large', zorder=1)
-ax2.text(0.28, 33,'TNC &',fontsize='large', zorder=1)
-ax2.text(0.275, 30,'Walking',fontsize='large', zorder=1)
+ax2.text(0.085, 35,'Scooter &',fontsize='medium', zorder=1)
+ax2.text(0.09, 32.5,'Walking',fontsize='medium', zorder=1)
+ax2.text(0.29, 35,'TNC &',fontsize='medium', zorder=1)
+ax2.text(0.285, 32.5,'Walking',fontsize='medium', zorder=1)
 # ax2.text(15.5, 33,'TNC &',fontsize='large', zorder=1)
 # ax2.text(15.2, 30,'Walking',fontsize='large', zorder=1)
 ax1.set_ylabel('Travel Time (min), Reliability (min)')
@@ -228,5 +238,9 @@ ax2.legend(loc='upper right')
 ax1.legend(loc='upper left').set_zorder(100)
 ax2.set_xticks(np.arange(0.09,0.40,0.05), fontsize=10)
 ax1.set_yticks(np.arange(0,60,5), fontsize=6)
-ax2.set_yticks(np.arange(0,80,5), fonrtsize=6)
+ax2.set_yticks(np.arange(0,80,5), fontsize=6)
+
+ax1.set_zorder(ax1.get_zorder()+1)
+ax1.patch.set_visible(False)
+plt.show(0)
 # %%

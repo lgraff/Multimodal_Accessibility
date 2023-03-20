@@ -1,3 +1,4 @@
+#%%
 # libraries
 import os
 import time
@@ -42,6 +43,7 @@ process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash_out
                                 G_drive_output_path, G_bike_output_path)
 print('street centerlines processed')
 
+#%%
 # build supernetwork: save as pickled object for later use if necessary (avoid compiling it many times)
 from build_supernetwork import build_supernetwork
 start = time.perf_counter() # records start time

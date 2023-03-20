@@ -12,6 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import create_macposts_files as macposts
 import tdsp_macposts as tdsp
+import random
+
+random.seed(0)
 cwd = os.getcwd()
 
 # compile the od graph
@@ -25,13 +28,8 @@ for b in board_edges:
     rt = rt_node.split('_')[1]
     if rt in ['64', '71D']:
         # adjust the avgTT and reliability 
-        print(rt_node)
-        print(G_super_od.graph.edges[b]['0_avg_TT_sec'])
         G_super_od.graph.edges[b]['0_avg_TT_sec'] = G_super_od.graph.edges[b]['0_avg_TT_sec'] / 2
-        print(G_super_od.graph.edges[b]['0_avg_TT_sec'])
-        print(G_super_od.graph.edges[b]['0_reliability'])
         G_super_od.graph.edges[b]['0_reliability'] = G_super_od.graph.edges[b]['0_reliability'] / 2
-        print(G_super_od.graph.edges[b]['0_reliability'])
 
 # %% now proceed as normal
 
@@ -149,13 +147,11 @@ for b_TT in np.arange(0/3600, 21/3600, 1/3600): #[20/3600]: #
         del cost_array_dict
         gc.collect()
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             #%% Get the totals of the individual cost components
+#%% Get the totals of the individual cost components
 path_costs = {} # this will be a dict of dicts
-for sc_ppmin, (node_seq, link_seq, path) in all_paths.items():
+for beta_params, (node_seq, link_seq, path) in all_paths.items():
     price_total, risk_total, rel_total, tt_total, discomfort_total = 0, 0, 0, 0, 0
     cost_total = 0
-    price_reduction_pct = (0.39 - sc_ppmin) / 0.39  # percent reduction in scoot link cost
-    cost_array_price = cost_arrays['price'].copy()
-    cost_array_price[sc_links] = (1-price_reduction_pct) * cost_array_price[sc_links] 
     t = timestamp
     for idx, l in enumerate(link_seq):  # the link seq
         # look up how many time intervals it takes to cross the link
@@ -178,7 +174,7 @@ for sc_ppmin, (node_seq, link_seq, path) in all_paths.items():
             nodecost = 0
         # td_node_cost: nodeID, inLinkID, outLinkID
         # get the price, risk, and reliability of the link at timestamp t
-        price_link, risk_link, rel_link, tt_link = cost_array_price[l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
+        price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['avg_TT_sec'][l,t]  # (these arrays do not have a col for linkID)
         discomfort_link = cost_arrays['discomfort'][l,t]
         #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
         # update time and cost totals
@@ -192,11 +188,10 @@ for sc_ppmin, (node_seq, link_seq, path) in all_paths.items():
                             'tt_total':round(tt_total/60,2), 'discomfort_total': discomfort_total}
         t = t + intervals_cross  
         #print(nid_map[node_in], nid_map[node_out], price_link)
-        #del cost_array_price
-        gc.collect()
-    path_costs[sc_ppmin] = cost_attributes   
+    path_costs[beta_params] = cost_attributes
+
 # %% Just print the path 
-for params, link_seq in all_paths.items():
+for params, (node_seq, link_seq, path) in all_paths.items():
     print('path parms:', params)
     for l in link_seq:
         l = int(l)
@@ -206,8 +201,9 @@ for params, link_seq in all_paths.items():
 
 # %%
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-sc_prices = list(path_costs.keys())
+betas_used = list(zip(*list(path_costs.keys()))) # tuple(zip(*list(zip(*path_costs))[0]))
+betas_tt = betas_used[0]
+#betas_rel = betas_used[1]
 cost_dict = list(path_costs.values())
 
 all_prices = [d['price_total'] for d in cost_dict]
@@ -216,7 +212,7 @@ all_rel = [d['rel_total'] for d in cost_dict]
 all_tt = [d['tt_total'] for d in cost_dict]
 all_disc = [d['discomfort_total'] for d in cost_dict]
 
-x_axis = np.array(sc_prices)
+x_axis = np.array(betas_tt)*3600
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
@@ -227,21 +223,29 @@ ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0)
 ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0)
 ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0)
 # note where the mode shift occurs
-ax1.axvspan(0.14, 0.19, alpha=0.5, color='grey')
-#plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
-#plt.axvline(x=12, color='black',linestyle='--',linewidth=2)
+ax2.axvspan(9,10, alpha=0.5, color='grey')
+ax2.axvspan(13,14, alpha=0.5, color='grey')
+
 # distinguish region by mode type
-ax2.text(0.081, 33,'Scooter &',fontsize='large', zorder=1)
-ax2.text(0.086, 30,'Walking',fontsize='large', zorder=1)
-ax2.text(0.28, 33,'TNC &',fontsize='large', zorder=1)
-ax2.text(0.275, 30,'Walking',fontsize='large', zorder=1)
-# ax2.text(15.5, 33,'TNC &',fontsize='large', zorder=1)
-# ax2.text(15.2, 30,'Walking',fontsize='large', zorder=1)
+ax2.text(2, 31,'Public Transit &',fontsize='medium', zorder=1)
+ax2.text(3, 28.5,'Walking',fontsize='medium', zorder=1)
+ax2.text(9.5, 32,'Bikeshare &',fontsize='medium', zorder=1)
+ax2.text(9.5, 29.5,'Public Transit &',fontsize='medium', zorder=1)
+ax2.text(9.5, 27,'Walking',fontsize='medium', zorder=1)
+ax2.text(16.5, 31,'TNC &',fontsize='medium', zorder=1)
+ax2.text(16.2, 28.5,'Walking',fontsize='medium', zorder=1)
 ax1.set_ylabel('Travel Time (min), Reliability (min)')
 ax2.set_ylabel('Price ($), Risk, Discomfort')
-ax1.set_xlabel(r'Scooter price per minute (\$/min)')   #$\beta_{TT}$')
+ax1.set_xlabel(r'$\beta_{TT}\ (\$/$min)')   #$\beta_{TT}$')
 ax2.legend(loc='upper right')
-ax1.legend(loc='upper left').set_zorder(100)
-ax2.set_xticks(np.arange(0.09,0.40,0.05), fontsize=10)
-ax1.set_yticks(np.arange(0,60,5), fontsize=6)
-ax2.set_yticks(np.arange(0,80,5), fonrtsize=6)
+ax1.legend(loc='upper left')
+ax2.set_xticks(np.arange(0,22,2), fontsize=10)
+ax1.set_yticks(np.arange(0,240,20), fontsize=6)
+ax2.set_yticks(np.arange(0,70,5), fonrtsize=6)
+# %%
+for e in G_super_od.graph.edges:
+    if e[0].startswith('bs') & e[1].startswith('dst'):
+        print(e)  # ('bsd15', 'dst')
+        
+
+# %%

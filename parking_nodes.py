@@ -36,7 +36,7 @@ def create_parking_nodes(input_filepath, output_filepath):
     # For simplicity, choose just one "representative" parking point for each zone
     df_park_avg = df_park.groupby('zone').agg({'latitude':'mean', 'longitude':'mean', 'float_rate':'mean'}).reset_index()
     gdf_park_avg = gpd.GeoDataFrame(data=df_park_avg, geometry=gpd.points_from_xy(x=df_park_avg.longitude, y=df_park_avg.latitude),crs='epsg:4326')
-    gdf_park_avg.plot()
+    #gdf_park_avg.plot()
     study_area_gdf = gpd.read_file(os.path.join(cwd, 'Data', 'Output_Data', 'study_area.csv'))
     gdf_park_avg_clip = gpd.clip(gdf_park_avg, study_area_gdf)
 
