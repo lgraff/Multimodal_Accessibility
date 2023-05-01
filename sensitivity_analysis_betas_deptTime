@@ -144,7 +144,7 @@ for b_tt, tdsp_dept_time_dict in tdsp_dict.items():
         print(path)
         all_paths[(b_tt,t)] = (node_seq, link_seq, path)
 
-# get which modes define the path
+#%% get which modes define the path
 t = 0  # choose the t
 path_modes = {}
 for b_tt in np.arange(0/3600, 30/3600, 2/3600):
@@ -176,17 +176,17 @@ for (b_tt,timestamp), (node_seq, link_seq, path) in all_paths.items():
         intervals_cross = td_link_tt[l,t+1]  # add one bc first col is linkID
         node_in, node_out = inv_link_id_map[l]   
         # # TODO: figure out how to add node costs (below needs to be checked)
-        # if idx > 0:
-        #     node_id = int(node_seq[idx])
-        #     in_link_id = int(link_seq[idx-1])
-        #     out_link_id = l
-        #     #if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
-        #     if [node_id, in_link_id, out_link_id] in nodecost_ids.tolist():
-        #         nodecost = -2.75 #round(-2.75/2, 2)  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
-        #     else:
-        #         nodecost = 0
-        # else:
-        #     nodecost = 0
+        if idx > 0:
+            node_id = int(node_seq[idx])
+            in_link_id = int(link_seq[idx-1])
+            out_link_id = l
+            #if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
+            if [node_id, in_link_id, out_link_id] in nodecost_ids.tolist():
+                nodecost = -2.75 #round(-2.75/2, 2)  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
+            else:
+                nodecost = 0
+        else:
+            nodecost = 0
         # td_node_cost: nodeID, inLinkID, outLinkID
         # get the price, risk, and reliability of the link at timestamp t
         price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['travel_time'][l,t]  # (these arrays do not have a col for linkID)
@@ -196,7 +196,7 @@ for (b_tt,timestamp), (node_seq, link_seq, path) in all_paths.items():
         #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
         # update time and cost totals
         #print(nid_map[node_in], nid_map[node_out], 'price:', round(price_link,2), 'risk:', round(risk_link,2), 'rel:', round(rel_link/60,2), 'tt:',round(tt_link/60,2), 'discomf:',round(discomfort_link,2))
-        price_total += (price_link) # + nodecost)
+        price_total += (price_link + nodecost)
         risk_total += risk_link
         rel_total += rel_link
         tt_total += tt_link
@@ -227,11 +227,11 @@ x_axis = np.array(betas_tt)*3600
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
-ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0)
-ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0)
-ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0)
-ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0)
-ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0)
+ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0, marker='o')
+ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0, marker='o')
+ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0, marker='o')
+ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0, marker='o')
+ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0, marker='o')
 #plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
 #plt.axvline(x=13, color='black',linestyle='--',linewidth=2)
 # distinguish region by mode type
@@ -251,3 +251,49 @@ ax2.set_yticks(np.arange(0,50,5), fonrtsize=6)
 # %% alternatively: 
 fig, ax = plt.subplots() #1,5, figsize=(8,6))
 ax.bar(betas_tt, all_prices)
+
+
+#%% now: fix b_tt but adjust t
+b_tt = 10/3600
+path_costs_time = dict(((b_tt,timestamp), path_costs[(b_tt,timestamp)]) for timestamp in range(0,175,6))
+cost_dicts = list(path_costs_time.values())
+#betas_used = list(zip(*list(path_costs_time.keys()))) # tuple(zip(*list(zip(*path_costs))[0]))
+#betas_tt = betas_used[0]
+#betas_rel = betas_used[1]
+
+# get which modes define the path
+b_tt = 10/3600  # choose the b_tt
+path_modes = {}
+for t in range(0,175,6):
+    path = all_paths[(b_tt,t)][2]
+    stripped_path = [n[0] for n in path]
+    mode_count = {}
+    for m in ['t','r','b','s']:  # tnc, route, bikeshare, scooter, zip
+        mode_count[m] = stripped_path.count(m)
+    modes_in_path = ''
+    for m, count in mode_count.items():
+        if count > 3:
+            modes_in_path += m + ','
+            path_modes[t] = modes_in_path
+
+# %%
+t = 0
+total_cost_by_time = {}
+for cd in cost_dicts:
+    total_cost = b_price*cd['price_total'] + b_tt*cd['tt_total'] + b_risk*cd['risk_total'] + b_disc*cd['discomfort_total'] + b_rel*cd['rel_total']
+    total_cost_by_time[t] = total_cost
+    t+=1
+
+import seaborn as sns
+df_entries = list(zip(list(total_cost_by_time.keys()),list(total_cost_by_time.values()),list(path_modes.values())))
+df = pd.DataFrame(df_entries, columns = ['minute', 'total_cost', 'modes_used_list'])
+mode_abbrev_dict = {'b,':'bike share + walk', 'r,':'public transit + walk', 'r,b,':'public transit + walk',
+                    'r,s,':'scooter + public transit + walk', 't,':'TNC + walk'}
+df['modes used'] = df['modes_used_list'].map(mode_abbrev_dict)
+
+df['minute'] = '08' + df['minute'].astype('str').str.zfill(2) #'%H%M'
+df['departure_time'] = pd.to_datetime(df['minute'], format='%H%M')
+sns.scatterplot(x='departure_time', y='total_cost', data=df, hue='modes used')
+
+
+# %%
