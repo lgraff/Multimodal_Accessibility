@@ -37,7 +37,6 @@ bikemap_folder = os.path.join(cwd, 'Data', 'Input_Data', 'bike-map-2019')
 studyarea_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'study_area.csv')
 G_drive_output_path = os.path.join(cwd, 'Data', 'Output_Data', 'G_drive.pkl')
 G_bike_output_path = os.path.join(cwd, 'Data', 'Output_Data', 'G_bike.pkl')
-
 process_street_centerlines(studyarea_filepath, streets_shapefile_path, crash_output_path, bikemap_folder,
                                 G_drive_output_path, G_bike_output_path)
 print('street centerlines processed')

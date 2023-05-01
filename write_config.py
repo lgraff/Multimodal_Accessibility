@@ -13,13 +13,11 @@ import yaml
 # Define parameters
 config_info = {
     'Geography': {
-        'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North'],
-        'buffer': 0.25 # miles
-                           #'Shadyside'] # Shadyside #, 'Point Breeze North', 'Larimer']
-                           
-                           # 'Shadyside', 'South Oakland', 'Central Oakland', 'North Oakland', 'Bloomfield', 
-                           # 'Friendship', 'Garfield',
-                           # 'East Liberty', 'Larimer', 'Point Breeze']
+        # 'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North',
+        #                    'South Oakland', 'Central Oakland', 'North Oakland', 'Point Breeze'],
+        'neighborhoods': ['Central Oakland','Squirrel Hill South', 'Squirrel Hill North',
+                             'North Oakland', 'Larimer', 'Point Breeze', 'Shadyside','East Liberty'],
+        'buffer': 0.2 # miles
         },
     'Beta_Params': {
         'b_price': 1,
@@ -31,91 +29,72 @@ config_info = {
     'Speed_Params': {
         'walk': 1.3,  # m/s
         #'parking_speed': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
-        'scoot': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
-        'bike': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
+        'scoot': 2.78, # m/s. see: A comparative analysis of e-scooter and e-bike usage patterns...(Almannnaa, Ashqar, ...)
+        'bike': 14.5 / 3600 * 1000,    # Characterizing the speed and pahts of shared bicycle use in Lyon (Jensen et al) 2010
         'TNC': {'wait_time': 7}  # minutes
         },   # km/hr
     'Price_Params': {
-        'walk': {'ppmin': 0},  # fix the scooter price back!
-        'scoot': {'ppmin': 0.39, 'fixed': 1},  # $
-        'bs': {'ppmin': 25/200},
-        'TNC': {'ppmin': 0.18, 'ppmile': 1.08, 'fixed': 2.92 + 1.53 + 1.81, 'minfare_buffer': 8.32/4},  # fixed price is: base fare + "long pickup fare" + "booking fee"
-        'PT': {'fixed': 2.75},
-        'pb': {'ppmin': 0},
-        'zip': {'ppmin': 11/60, 'fixed_per_month': 9, 'est_num_trips': 4},
-        'pv': {'ppmin':0, 'ppmile': 0.20}
-        # 'walk_ppmin': 0,
-        # 'scoot_ppmin': 0.39,
-        # 'scoot_fix_price': 1,
-        # 'bs_ppmin': 20/300,
-        # 'TNC_fix_price': 1.51 + 1.60,
-        # 'TNC_ppmile': 0.92,
-        # 'TNC_ppmin': 0.34,
-        # 'TNC_minfare_buffer': 8.32/4,
-        # 'PT_price': 2.75,
-        # 'pb_ppmin': 0,
-        # 'pv_ppmile': 0.20,
-        # 'zip_ppmin': 11/60,
-        # 'zip_fixed_ppmonth': 9,
-        # 'zip_est_num_trips': 4
+        'w': {'ppmin': 0, 'ppmile':0, 'fixed': 0},  
+        'sc': {'ppmin': 0.39, 'ppmile':0, 'fixed': 0},  # $
+        'sc_tx': {'ppmin': 0, 'ppmile':0, 'fixed': 1},
+        'bs': {'ppmin': 25/200, 'ppmile':0, 'fixed': 0},
+        't': {'ppmin': 0.18, 'ppmile': 1.08, 'fixed': 0},  # fixed price is: base fare + "long pickup fare" + "booking fee"
+        't_wait': {'ppmin':0, 'ppmile':0, 'fixed': 2.92 + 2.57 + 8.32/4},  #8.32/4 is like a minfare buffer
+        'board': {'ppmin':0, 'ppmile':0, 'fixed': 2.75},
+        'alight': {'ppmin':0, 'ppmile':0, 'fixed': 0},
+        'pt': {'ppmin':0, 'ppmile':0, 'fixed': 0},
+        'rt': {'ppmin':0, 'ppmile':0, 'fixed': 0},
+        'pb': {'ppmin': 0, 'ppmile':0, 'fixed': 0},
+        'z': {'ppmin': 11/60, 'ppmile':0, 'fixed': 0, 'fixed_per_month': 9, 'est_num_trips': 4},
+        'pv': {'ppmin':0, 'ppmile': 0.20, 'fixed': 0},
+        'park': {'ppmin':0, 'ppmile':0, 'fixed':5+(2*11)}  # can add a ppmin for parking and adjust travel time of parking edge to account for fixed time
         },
     'Conversion_Factors': {
         'meters_in_mile': 1609,
         'miles_in_km': 0.621371
         },
     'Time_Intervals': {
-        'interval_spacing': 20,  # sec
+        'interval_spacing': 10,  # sec
         'len_period': 60*60,  # sec
         'time_start': 7,  # AM
         'time_end': 9  # AM
         },
-    # 'Active_Mode_Parameters': {
-    #     'active_modes': ['w','pb','bs','sc'],
-    #     'nonactive_modes': ['pv','pt','t','z'],z
-    #     'discomf_weight_bike': 3/10,
-    #     'discomf_weight_scoot_walk': 1/10,
-    #     'discomf_weight_nonactive': 0,
-    #     'rel_weight_active': 1,
-    #     'rel_weight_nonactive': 1.5
-    #     },
+
     'Reliability_Params': {
-        'walk': 1,
-        'scoot': 1,
-        'pv': 1.5,
-	'pb': 1,
-        'bs': 1,
-        'PT_wait': 2, 
-        'PT_traversal': 1.5,
-	'TNC': 1.5,
-        'TNC_wait': 2,
-	'zip': 1.5,
-        'drive': 1.5,
- 	'bike': 1
+        'board':2,  # cite Daryn's paper
+        't_wait':2  # cite?
         },
+
     'Discomfort_Params': {
-        'walk': 1.1,
-        'scoot': 1.1,
-        'pb': 1.3,
-        'bs': 1.3,
-        'PT_traversal': 1.1,
-        'PT_wait': 1.1,  # could change if thinking about cold weather conditions and waiting outside is unpleasant
-        'pv': 1,
-        'TNC': 1,
-        'zip': 1
+        'w': 2.86/1.34,
+        'sc': 3.26/1.34,  # 
+        'bs': 3.26/1.34,
+        't': 1.34/1.34,  # use vehicle as baseline
+        't_wait': 0,
+        'board': 0,  # could change if thinking about cold weather conditions
+        'alight': 0,
+        'pt': 2.22/1.34,
+        'pb': 3.26/1.34,
+        'z': 1.34/1.34,
+        'pv': 1.34/1.34,
+        'park': 1.34/1.34
         },
-    'Risk_Parameters': {
-        'walk': 1.05,
-        'scoot': 1.1,
-        'pb': 1.1,
-        'bs': 1.1,
-        'PT_traversal': 1,
-        'PT_wait': 1,  # a nonzero parameter is meant to indicate the risk associated with waiting idly at a bus stop
-        'pv': 1,
-        'TNC': 1,
-        'zip': 1,
-        #'risk_weight_active': 1.2,
-        'crash_weight': 5
-        },
+
+    'Risk_Crash_Idx': {
+        'w':0.28,
+        'sc':1.81,
+        'bs':1.81,
+        't':1,
+        't_wait':0,
+        'board':0.19,
+        'alight':0.19,
+        'pt':0.19,
+        'pb':1.81,
+        'z':1,
+        'pv':1,
+        'park':1
+    },
+
     'Connection_Edge_Speed': {
         'pv': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
         'bs': 15 / 3600 * 1000,    # 15 km/hr / (3600 s/hr ) * 1000 m/km = m/s
@@ -123,16 +102,16 @@ config_info = {
         },
     'Scoot_Data_Generation': {
         'num_days_of_data': 30,
-        'num_obs': 500
+        'num_obs': 1500*(2/3) # see MovePGH report. 1500 total scooters, eyeball estimate that 2/3 are located in these nhoods
         },
     'Supernetwork': {
         'modes_included': ['bs', 'z', 'sc', 't', 'pt'],
         'W_tx': 0.5,  # miles,
         'W_od': 0.75,  # miles
-        #'org': [-79.92963073354404, 40.406957045578174] ,  # glen hazel neighborhood
-        #'dst': [-79.9275707970418, 40.44563703158395]  # squirrel hill north neighborhood
-	    'org': [-79.94868171046522, 40.416379503934145],  # hazelwood green
-	    'dst': [-79.91944888168011, 40.45228774674678], # mellon park 
+	    # 'org': [-79.9488, 40.4161],  # hazelwood green
+	    # 'dst': [-79.9194, 40.4517], # mellon park 
+        'org': [-79.91101702988759, 40.4642694061984], # larimer
+        'dst': [-79.95137478282426, 40.43878091188718],  # central oakland
         'num_park_hours': 2 
     # chatham univ: [-79.92399900719222, 40.44955761072877] 
         }  #, 'pb']}

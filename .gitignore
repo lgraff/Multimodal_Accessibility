@@ -26,6 +26,8 @@ mm_graph_testing.ipynb
 tdsp_testing.ipynb
 create_td_cost_arrays.py
 test.ipynb
+sensitivity_analysis_betas_v2
+risk_analysis.py
 
 # Ignore files produced by MAC-POSTS
 td_link_cost

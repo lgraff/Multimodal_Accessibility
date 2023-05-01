@@ -196,8 +196,9 @@ ax.set_title('Bike share Network')
 
 #%% PUBLIC TRANSIT graph
 G_pt_full = build_PT_graph(os.path.join(cwd, 'Data', 'Input_Data', 'GTFS'),
-                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway_NEW.csv'), 
-                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))
+                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv'), 
+                      os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'),
+                      os.path.join(cwd, 'Data', 'Output_Data', 'streets_processed.csv'))
 
 # Reduce the size of the PT network through a bounding box approach:
 # Find the bounding box of the pgh_study_area polygon. Extend this bounding box by x miles. Then clip the PT network by this extended bounding box

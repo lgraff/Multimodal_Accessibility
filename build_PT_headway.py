@@ -16,6 +16,10 @@ from util_functions import *
 import config as conf
 
 config_data = conf.config_data
+time_start = conf.config_data['Time_Intervals']['time_start']*3600 # seconds start after midnight
+time_end = conf.config_data['Time_Intervals']['time_end']*3600 # seconds end after midnight
+num_intervals = int((time_end-time_start) / conf.config_data['Time_Intervals']['interval_spacing']) # + 1)
+interval_spacing = conf.config_data['Time_Intervals']['interval_spacing']  # seconds
 
 cwd = os.getcwd()
 inpath = os.path.join(cwd, 'Data', 'Input_Data', 'GTFS.zip')
@@ -33,8 +37,8 @@ all_routes = feed.trips.route_id.unique()    # all routes
 all_dirs = feed.trips.direction_id.unique()  # all directions
 # Find trips overlapping the time window
 all_trips = feed.stop_times[
-    (feed.stop_times.arrival_time >= config_data['Time_Intervals']['time_start']*60*60) # time_start = 7am
-    & (feed.stop_times.arrival_time <= config_data['Time_Intervals']['time_end']*60*60) # time_end = 9am
+    (feed.stop_times.arrival_time >= time_start) # time_start = 7am
+    & (feed.stop_times.arrival_time <= time_end) # time_end = 9am
     ].trip_id.unique().tolist()
 
 #%%

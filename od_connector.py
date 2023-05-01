@@ -27,13 +27,12 @@ from data_gen_functions import gen_data
 # 1) org connects to flex PV;  2) org does not connect to fixed parking;  3) dst does not connect to flex PV
 # 4) dst connects to fixed parking;  5) dst does not connect to fixed zip depot
 def od_cnx(G_super_filepath, o_coord, d_coord):
-    #cwd = os.getcwd()
-    #with open(os.path.join(cwd, 'Data', 'Output_Data', 'G_super.pkl'), 'rb') as inp:
-     #   G_super = pickle.load(inp)
-
     with open(G_super_filepath, 'rb') as inp:
         G_super = pickle.load(inp)
 
+    coord_matrix = G_super.coord_matrix
+
+#for i in range(num_od_pairs):
     # define od pair
     o_coord = o_coord 
     d_coord = d_coord 
@@ -46,30 +45,22 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
     # 2 rows because 1 origin and 1 destination 
     nrow, ncol = 2, len(G_super.nid_map) + 2  # add 2 to len(nid_map) to account for addition of org node and dst node
 
-    gcd_od = np.empty([nrow, ncol])  
+    gcd_od = np.empty([nrow, ncol])    # matrix of size 2 x num_nodes (including OD nodes) 
     for j in range(nrow):  # first the org, then the dest
-        dist_to_map_nodes = ut.calc_great_circle_dist(od_coords[j], G_super.coord_matrix) # dist from OD to modal graph nodes
+        dist_to_map_nodes = ut.calc_great_circle_dist(od_coords[j], coord_matrix) # dist from OD to modal graph nodes
         dist_to_od = ut.calc_great_circle_dist(od_coords[j], od_coords) # dist from O to O and O to D, then D to O and D to D
         gcd_od[j] = np.hstack((dist_to_map_nodes, dist_to_od)) # horizontally concatenate 
         
-    # now add gcd_dist_od to the original gcd_dist matrix
+    # now add gcd_dist_od to the original gcd_dist matrix (gcd_dist_all is a num_nodes x num_nodes matrix)
     # result is gcd_dist_all, which contains the gcd dist b/w all pairs of nodes in the graph, including org and dst
     gcd_dist_all = np.vstack((G_super.gcd_dist, gcd_od[:,:len(G_super.nid_map)]))
-    gcd_dist_all = np.hstack((gcd_dist_all, np.transpose(gcd_od)))
+    gcd_dist_all = np.hstack((gcd_dist_all, np.transpose(gcd_od)))  
 
     # adjust the nid_map and gcd_dist matrix to reflect the addition of org and dst
-    G_super.nid_map[max(G_super.nid_map.keys())+1] = 'org'
-    G_super.nid_map[max(G_super.nid_map.keys())+1] = 'dst'
+    G_super.nid_map[max(G_super.nid_map.keys())+1] = 'org'  # 'org'+str(i)
+    G_super.nid_map[max(G_super.nid_map.keys())+1] = 'dst'  # 'dst'+str(i)
     G_super.gcd_dist = gcd_dist_all
     inv_nid_map = dict(zip(G_super.nid_map.values(), G_super.nid_map.keys()))   # also adjust the inverse nidmap
-
-    # build od_cnx and add to graph
-    #od_cnx_edges = od_cnx(G_super, o_coord, d_coord) 
-    #od_cnx_edges = [(e[0], e[1], od_cnx_edges[e])for e in od_cnx_edges.keys()] # convert od_cnx_edges to proper form so that they can be added to graph
-    #G_super.graph.add_edges_from(od_cnx_edges)
-    # then save the object
-    #cwd = os.getcwd()
-    #G_super.save_object(os.path.join(cwd, 'Data', 'Output_Data', 'G_super_od.pkl'))
 
     # first get get scooter data
     num_days_of_data = conf.config_data['Scoot_Data_Generation']['num_days_of_data']
@@ -108,18 +99,6 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
 
                 attr_dict = {'length_m':G_super.gcd_dist[inv_nid_map[i_name], j], 'mode_type':'w', 'etype':'od_cnx'}
                 od_cnx_edges[edge] = attr_dict
-
-                # attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
-                #              '0_price': fixed_price,
-                #              '0_reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
-                #              #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                #              '0_risk': 1, 
-                #              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}
-                # od_cnx_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':'od_cnx'}  # | operator concatenates dicts                
-                # od_cnx_edges[edge] = (ut.time_dep_attr_dict(attr_dict, int(conf.config_data['Time_Intervals']['len_period'] / conf.config_data['Time_Intervals']['interval_spacing']) + 1)
-                #                         | {'mode_type':'w'}
-                #                         | {'type':'od_cnx'})
-                         
                 
         # some fixed modes do not have a node within the wcz. for these modes, we will instead connect the 
         # org or dst to the nearest neighbor node of for these specific fixed modes. consider this like 
@@ -143,13 +122,6 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                 fixed_price = 0
 
                 attr_dict = {'length_m':nnDist, 'mode_type':'w', 'etype':'od_cnx'}
-
-                # attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
-                #              '0_price': fixed_price,
-                #              '0_reliability': (walk_time + wait_time) * conf.config_data['Reliability_Params']['walk'],
-                #              #'risk_idx': 1,  # for now, just assume all transfers associated with risk = 1,
-                #              '0_risk': 1,
-                #              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}                
 
                 if i_name == 'org':
                     edge = (i_name, r_name)  # build org connector
@@ -196,16 +168,6 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                     #G_super.nid_map[max(G_super.nid_map.keys())+1] = t_virtual
                     # add virtual waiting edge
                     t_wait_edge = (t_virtual, k_name)
-                    
-                    # wait_time = 60 * conf.config_data['Speed_Params']['TNC']['wait_time']
-                    # fixed_price = conf.config_data['Price_Params']['TNC']['fixed']
-                    # rel_weight = conf.config_data['Reliability_Params']['TNC_wait']
-                    # t_wait_attr_dict = {'0_avg_TT_sec': wait_time,
-                    #                     '0_price': fixed_price,
-                    #                     '0_reliability': wait_time * rel_weight,
-                    #                     '0_risk': 0, 
-                    #                     '0_discomfort': 0}
-
                     t_wait_attr_dict = {'mode_type':'t_wait', 'etype':'od_cnx'}
                     od_cnx_edges[t_wait_edge] = t_wait_attr_dict  # waiting edge
                     od_cnx_edges[(i_name,t_virtual)] = attr_dict  # transfer (walking) edge 

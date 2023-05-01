@@ -10,10 +10,12 @@ Created on Mon Aug 29 17:06:08 2022
 #import yaml
 #import geopandas as gpd
 import pandas as pd
+import geopandas as gpd
 import os
 import networkx as nx 
 import re
 import matplotlib.pyplot as plt
+from shapely import wkt
 import config as conf
 import util_functions as ut
 
@@ -32,10 +34,27 @@ import util_functions as ut
 # headway_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv')
 # traversal_time_filepath = os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv')
 
-def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
-
+def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath, streets_processed_path):
+    cwd = os.getcwd()
     # first we need the coordinates of all the bus stops, read directly from GTFS
     stops_df = pd.read_csv(os.path.join(GTFS_filepath, 'stops.txt'))
+#**********************
+    # Preprocessing: join bus stops to streets (nearest). 
+    # read in stops and processed streets
+    df_streets = pd.read_csv(streets_processed_path)
+    df_streets['geometry'] = df_streets['geometry'].apply(wkt.loads)
+    #df_streets[df_streets['pred_crash'].isna()] # quick check
+    # convert to gdf for spatial join
+    streets_gdf = gpd.GeoDataFrame(df_streets, geometry=df_streets.geometry, crs='EPSG:2272') 
+    stops_gdf = gpd.GeoDataFrame(stops_df, geometry=gpd.points_from_xy(x=stops_df['stop_lon'], y=stops_df['stop_lat']), crs='EPSG:4326')
+    # reproject to projected CRS
+    streets_gdf.to_crs(crs='epsg:32128', inplace=True)
+    stops_gdf.to_crs(crs='epsg:32128', inplace=True)
+    # retain copy of streets geom for checking
+    streets_gdf['saved_geom'] = streets_gdf.geometry
+    # spatial join
+    stops_streets = gpd.sjoin_nearest(stops_gdf, streets_gdf)[['stop_id','stop_lat','stop_lon','geometry','saved_geom','pred_crash']]
+#**********************
     # add 'ps' in front of the stop_id to define it as a physical stop
     stops_df['stop_id'] = 'ps' + stops_df['stop_id']
     # add position
@@ -68,11 +87,12 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
     df_traversal_time = pd.read_csv(traversal_time_filepath)
     df_headway = pd.read_csv(headway_filepath)
 
+    df_traversal_time[['stop_id','route_id','direction_id']] = df_traversal_time[['stop_id','route_id','direction_id']].astype('str')
+    df_headway[['stop_id','route_id','direction_id']] = df_headway[['stop_id','route_id','direction_id']].astype('str')
+    
     # define route_node_id as 'rt' + stop_id + route_id + dir_id
-    df_headway['route_node_id'] = 'rt' + df_headway['stop_id'].astype(
-        'str') + '_' + df_headway['route_id'] + '_' + df_headway['direction_id'].astype(str)
-    df_traversal_time['route_node_id'] = 'rt' + df_traversal_time['stop_id'].astype(
-        'str') + '_' + df_traversal_time['route_id'] + '_' + df_traversal_time['direction_id'].astype(str) + '_' + df_traversal_time['stop_sequence'].astype(str)
+    df_headway['route_node_id'] = 'rt' + df_headway['stop_id'] + '_'+ df_headway['route_id']+ '_' + df_headway['direction_id']
+    df_traversal_time['route_node_id'] = 'rt' + df_traversal_time['stop_id'] + '_' + df_traversal_time['route_id'] + '_' + df_traversal_time['direction_id'] + '_' + df_traversal_time['stop_sequence'].astype(str)
 
     # associate a route node to a stopID
     stops_df.reset_index(inplace=True)
@@ -106,14 +126,16 @@ def build_PT_graph(GTFS_filepath, headway_filepath, traversal_time_filepath):
         route_edges_attr = []
         # add travel time attribute. need to look it up in the df_traversal_time dataframe
         for e in route_edges:
+            stop_id = e[0].split('rt')[1].split('_')[0]  # some str.split magic to get stop_id
+            pred_crashes = stops_streets[stops_streets['stop_id'] == stop_id]['pred_crash'].values[0]
             trav_time_sec = df_traversal_time.loc[df_traversal_time['route_node_id'] == e[1]]['traversal_time_sec'].values[0]   # traversal time from GTFS data
-            tt_attr = {'avg_TT_sec': trav_time_sec}
+            attr_dict = {'avg_TT_sec': trav_time_sec, 'pred_crash':pred_crashes}
             # tt_attr = {'0_avg_TT_sec': trav_time_sec}
             # price_attr = {'0_price': 0}  # the 2.75 boarding cost will be embedded in boarding edge
             # reliability_attr = {'0_reliability': conf.config_data['Reliability_Params']['PT_traversal'] * trav_time_sec}
             # risk_attr = {'0_risk': conf.config_data['Risk_Parameters']['PT_traversal']}
             # discomf_attr = {'0_discomfort': conf.config_data['Discomfort_Params']['PT_traversal']}
-            route_edges_attr.append((e[0], e[1], tt_attr))  # | is an operator for merging dicts
+            route_edges_attr.append((e[0], e[1], attr_dict))  # | is an operator for merging dicts
 
         # add route edges to the PT graph, along with attriutes
         G_pt.add_edges_from(route_edges_attr)

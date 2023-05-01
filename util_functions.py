@@ -8,6 +8,8 @@ Created on Wed Aug 17 15:20:10 2022
 
 # import libraries
 from sklearn.neighbors import BallTree
+import statsmodels as sm
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,11 +18,6 @@ import re
 import pickle 
 import ckanapi
 import config as conf
-#import yaml
-#import geopandas as gpd
-#import os
-#from global_ import conf.config_data, study_area_gdf
-
 
 # # load conf.config file
 # def load_config(config_filename):
@@ -62,51 +59,7 @@ def dms2dd(angle):
 def flatten_proj(gdfs, crs):
     for g in gdfs:
         g.to_crs(crs=crs, inplace=True)
-        
-# # convert gdfs to networkx graph
-# def gdfs_to_nxgraph(gdf_edges, gdf_nodes, source_col, target_col, nodeid_col, lat_col, long_col, edge_attr):
-#     G = nx.from_pandas_edgelist(gdf_edges, source=source_col, target=target_col,
-#                                 edge_attr = edge_attr,
-#                                 create_using=nx.DiGraph())
-#     gdf_nodes.index = gdf_nodes[nodeid_col]
-#     gdf_nodes['pos'] = tuple(zip(gdf_nodes[long_col], gdf_nodes[lat_col]))  # add position
-#     node_dict = gdf_nodes.drop(columns=[nodeid_col]).to_dict(orient='index')
-#     G.add_nodes_from(list(node_dict.keys()))
-#     nx.set_node_attributes(G, node_dict)
-#     return G
 
-# def gdfnodes_to_nxgraph(gdf_nodes, id_col, lat_col, long_col):
-#     gdf_nodes.index = gdf_nodes[id_col]
-#     gdf_nodes['pos'] = tuple(zip(gdf_nodes[long_col], gdf_nodes[lat_col]))  # add position
-#     node_dict = gdf_nodes.drop(columns=[id_col]).to_dict(orient='index')
-#     G = nx.DiGraph()
-#     G.add_nodes_from(list(node_dict.keys()))
-#     nx.set_node_attributes(G, node_dict)
-#     return G    
-
-# def calc_bike_risk_index(row, risk_weight_active):
-#     if((row['highway'] == 'cycleway') | (row['bikeway_type'] in (['Bike Lanes','Protected Bike Lane']))):
-#         risk_idx = 1
-#     elif(row['highway'] in (['motorway','trunk','trunk_link','primary','primary_link'])):
-#         risk_idx = 100000
-#     else:
-#         # this is a parameter to be adjusted. idea is that non-bikelane road is 25% more dangerous
-#         risk_idx = risk_weight_active 
-#     return risk_idx
-
-def calc_bike_risk_index(row):
-    risk_mapping = {'Protected Bike Lane':1, 'Bike Lanes':1.1, 'On Street Bike Route':1.2, 
-                     'Cautionary Bike Route':1.3, 'Bikeable_Sidewalks':1.1, 'None':10000}
-    risk_idx = risk_mapping[row['bikeway_type']]
-    if (row['bikeway_type'] == 'None') & (row['speed_lim'] <= 15):
-        risk_idx = 1
-    elif (row['bikeway_type'] == 'None') & (15 < row['speed_lim'] <= 25):
-        risk_idx = 1.1
-    elif (row['bikeway_type'] == 'None') & (25 < row['speed_lim'] <= 35):
-        risk_idx = 1.4 
-    elif (row['bikeway_type'] == 'None') & (row['speed_lim'] > 35):
-        risk_idx = 10000
-    return risk_idx
 
 def draw_graph(G, node_color, node_cmap, edge_color, edge_style, adjusted=False):
     # draw the graph in networkx
@@ -146,7 +99,7 @@ def get_nearest(src_points, candidates, k_neighbors=1):
     # Return indices and distances
     return (closest, closest_dist)
 
-
+# cite: 
 def nearest_neighbor(left_gdf, right_gdf, right_lat_col, right_lon_col, left_gdf_id, return_dist=False):
     """
     For each point in left_gdf, find closest point in right GeoDataFrame and return them.
@@ -202,6 +155,10 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
                          cnx_direction):
     # inputs: 
     # output: 
+
+    # read in crash model
+    # cwd = os.getcwd()
+    # crash_model = sm.load(os.path.join(cwd,'Data','Output_Data',"crash_model.pickle"))
         
     # get point in reference network nearest to each depot node; record its id and the length of depot to id
     nn = nearest_neighbor(gdf_depot_nodes_orig, gdf_ref_nodes, 'lat', 'long', 'id', return_dist=True).reset_index(drop=True)
@@ -211,11 +168,7 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
     nn['nn_id'] = nn.apply(lambda row: ref_id_prefix + str(int(row['nn_id'])), axis=1)
     # add cnx edge travel time 
     movement_speed = conf.config_data['Connection_Edge_Speed'][cnx_edge_movement_type]
-    nn['avg_TT_sec'] = (nn['length_m'] / movement_speed) # can probably delete this and move to final pandas calc
-    
-    #cnx_attr = (nn['length_m'] / movement_speed)   #.rename('0_avg_TT_sec')  # m / (m/s) / (60s/min)
-    #cnx_attr = pd.concat([cnx_attr] * num_time_intervals, axis=1)
-    #cnx_attr.columns = (['interval'+str(i) + '_' + 'avg_TT_min' for i in range(num_time_intervals)])
+    nn['pred_crash'] = 0.05  # the miniumum of pred_crash
 
     # these cnx edges go FROM ref network TO depot network
     #nn = pd.concat([nn, cnx_attr], axis=1)
@@ -225,14 +178,6 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
     to_depot_edges = list(zip(*list(cnx_edge_dict.keys())))
     from_depot_edges = list(zip(to_depot_edges[1], to_depot_edges[0]))
     from_depot_edges_attr = dict(zip(from_depot_edges, cnx_edge_dict.values()))    
-    
-    # build cnx edges
-   # gdf_cnx_edges = gdf_depot_nodes[['id', 'nn_id', 'length']]
-    #gdf_pv_parking_edges = gdf_parking_edges_clip.copy()
-    #gdf_cnx_edges.loc[:,'nn_osmid'] = ref_id_prefix + gdf_cnx_edges.loc[:,'nn_osmid'].astype('int32').astype('str')
-   # gdf_cnx_edges.loc[:,'nn_id'] = gdf_cnx_edges.loc[:, 'nn_id'].apply(lambda x: ref_id_prefix + str(int(x))) #, axis=1)
-     
-    #print(from_depot_edges)
     
     # for node attributes
     gdf_depot_nodes = gdf_depot_nodes_orig.copy()
@@ -268,28 +213,10 @@ def add_depots_cnx_edges(gdf_depot_nodes_orig, gdf_ref_nodes, depot_id_prefix,
         (e[0].startswith(depot_id_prefix) & e[1].startswith(ref_id_prefix)) | 
         (e[0].startswith(ref_id_prefix) & e[1].startswith(depot_id_prefix)))]
     
-    # # obtain proper price parameter
-    # if ref_id_prefix == 'z':
-    #     price_param = conf.config_data['Price_Params']['zip']['ppmin']
-    # elif ref_id_prefix == 'pv':
-    #     price_param = conf.config_data['Price_Params']['pv']['ppmile']
-    # elif ref_id_prefix == 'bs':
-    #     price_param = conf.config_data['Price_Params']['bs']['ppmin']
           
     for e in all_cnx_edge_list:
         G_ref.edges[e]['mode_type'] = ref_id_prefix   # surely a more efficient way to do this
-
-        # #for i in range(num_time_intervals): 
-        # if ref_id_prefix == 'pv':                # pv usage price is determined by mileage whereas shared mode usage price determined by time
-        #     G_ref.edges[e]['0_price'] = price_param * (G_ref.edges[e]['length_m'] / conf.config_data['Conversion_Factors']['meters_in_mile'])  # price/mile * miles
-        # else:
-        #     G_ref.edges[e]['0_price'] = (price_param / 60) * (G_ref.edges[e]['0_avg_TT_sec'] )
-        # G_ref.edges[e]['0_reliability'] = (conf.config_data['Reliability_Params'][cnx_edge_movement_type] *
-        #                                                         G_ref.edges[e]['0_avg_TT_sec'])
-        # G_ref.edges[e]['0_risk'] =  conf.config_data['Risk_Parameters'][cnx_edge_movement_type] #G_ref.edges[e]['interval' + str(i) + '_avg_TT_min']
-        # G_ref.edges[e]['0_discomfort'] = (conf.config_data['Discomfort_Params'][cnx_edge_movement_type])
-        #                                                        #* G_ref.edges[e]['interval' + str(i) + '_avg_TT_min'])
-    
+        
     return G_ref
 
 def get_coord_matrix(G):

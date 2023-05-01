@@ -9,7 +9,12 @@ import os
 from util_functions import *
 import config as conf
 
+# parameters
 config_data = conf.config_data
+time_start = conf.config_data['Time_Intervals']['time_start']*3600 # seconds start after midnight
+time_end = conf.config_data['Time_Intervals']['time_end']*3600 # seconds end after midnight
+num_intervals = int((time_end-time_start) / conf.config_data['Time_Intervals']['interval_spacing']) # + 1)
+interval_spacing = conf.config_data['Time_Intervals']['interval_spacing']  # seconds
 
 #%%
 cwd = os.getcwd()
@@ -26,19 +31,14 @@ feed = ptg.load_feed(inpath, view)
 
 all_routes = feed.trips.route_id.unique()    # all routes
 all_dirs = feed.trips.direction_id.unique()  # all directions
-# Find trips overlapping the time window
-start_time = config_data['Time_Intervals']['time_start']*60*60
-end_time = config_data['Time_Intervals']['time_end']*60*60
 
 # %%
 df_trips_stops = feed.stop_times.merge(feed.trips, how='inner', on='trip_id')
+# Find trips overlapping the time window
 # buffer the end time by 1 hr so we can still calculate the headway for traveler arrivals at stops at the end of the study period
-df_trips_stops = df_trips_stops[df_trips_stops['departure_time'].between(start_time, end_time + 1*60*60)]
-# get dept times every 5 min
-hour_range = [config_data['Time_Intervals']['time_start'], config_data['Time_Intervals']['time_end']-1]
-min_range = [m for m in range(0,60,5)]
-all_arrival_times_at_stop = [hr*60*60 + min*60 for hr in hour_range for min in min_range]
-
+df_trips_stops = df_trips_stops[df_trips_stops['departure_time'].between(time_start, time_end + 1*60*60)]
+# get dept times every [interval_spacing] seconds
+all_arrival_times_at_stop = [sec for sec in range(time_start, time_end, interval_spacing)]
 # routes = ['61C', '64']  # for testing
 df_headway_rows = []
 for r in all_routes: 
@@ -64,6 +64,9 @@ for r in all_routes:
                 df_headway_rows.append(row)
 
 df_headway = pd.DataFrame(df_headway_rows, columns=['route_id', 'direction_id', 'stop_id', 'traveler_arrival_time', 'headway']).sort_values(by=['route_id','direction_id','stop_id','traveler_arrival_time'])
+# here we have headway for each minute. now extend it for every 20 sec. see extend_inrix_data() function
+
+
 df_headway.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv'))    
         #print('**********')
         #     # any stop for any trip in the time interval for the route-dir pair
@@ -80,5 +83,6 @@ df_headway.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_headway.csv'))
 # headway = next_departure - arrival_time_at_stop  # in seconds
 
 #%%
+df_headway
  
 
