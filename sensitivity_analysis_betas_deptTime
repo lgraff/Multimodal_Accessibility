@@ -143,7 +143,7 @@ for b_tt, tdsp_dept_time_dict in tdsp_dict.items():
         print(path)
         all_paths[(b_tt,t)] = (node_seq, link_seq, path)
 
-#%% get which modes define the path
+# get which modes define the path
 for t in [0]: # range(0,170,30):  # choose the t
     path_modes = {}
     for b_tt in np.arange(0/3600, 30/3600, 2/3600):
@@ -162,9 +162,9 @@ for t in [0]: # range(0,170,30):  # choose the t
 # %%
 nodecost_ids = df_nodecost[['node_ID','in_link_ID','out_link_ID']].values.tolist()  #td_node_cost[:,:3]  # 
 
-
 path_costs = {} # this will be a dict of dicts
 for (b_tt,timestamp), (node_seq, link_seq, path) in all_paths.items():
+    print(b_tt,timestamp)
     price_total, risk_total, rel_total, tt_total, discomfort_total = 0, 0, 0, 0, 0
     cost_total = 0
     t = int(timestamp)
@@ -205,7 +205,7 @@ for (b_tt,timestamp), (node_seq, link_seq, path) in all_paths.items():
         cost_attributes = {'price_total': price_total, 'risk_total': risk_total, 'rel_total':round(rel_total/60,2), 
                             'tt_total':round(tt_total/60,2), 'discomfort_total': discomfort_total}
         t = int(t + intervals_cross)  
-        #print(nid_map[node_in], nid_map[node_out], price_link)
+        print(nid_map[node_in], nid_map[node_out],round(rel_total/60,2), round(tt_total/60,2))
     path_costs[(b_tt,timestamp)] = cost_attributes
 # %%
 # choose a specific timestamp
@@ -238,12 +238,12 @@ ax1.axvspan(6, 8, alpha=0.5, color='gray')
 ax1.axvspan(12, 14, alpha=0.5, color='gray')
 
 # distinguish region by mode type
-ax2.text(0,25,'Public Transit &',fontsize='medium', zorder=1)
-ax2.text(1.2,23,'Walking',fontsize='medium', zorder=1)
-ax2.text(7.8,25,'Bikeshare &',fontsize='medium', zorder=1)
-ax2.text(8.2,23,'Walking',fontsize='medium', zorder=1)
-ax2.text(20,25,'TNC &',fontsize='medium', zorder=1)
-ax2.text(19.5,23,'Walking',fontsize='medium', zorder=1)
+ax2.text(0,29,'Public Transit &',fontsize='medium', zorder=1)
+ax2.text(1.2,27,'Walking',fontsize='medium', zorder=1)
+ax2.text(7.8,29,'Bikeshare &',fontsize='medium', zorder=1)
+ax2.text(8.2,27,'Walking',fontsize='medium', zorder=1)
+ax2.text(20,29,'TNC &',fontsize='medium', zorder=1)
+ax2.text(19.5,27,'Walking',fontsize='medium', zorder=1)
 ax1.set_ylabel('Travel Time (min), Reliability (min)')
 ax2.set_ylabel('Price ($), Risk, Discomfort')
 ax1.set_xlabel(r'$\beta_{TT}\ (\$/$hour)')   #$\beta_{TT}$')
@@ -268,7 +268,7 @@ b_tt = 10/3600  # choose the b_tt
 path_modes = {}
 for t in range(0,175,6):
     path = all_paths[(b_tt,t)][2]
-    stripped_pscooter_price_CSath = [n[0] for n in path]
+    stripped_path = [n[0] for n in path]
     mode_count = {}
     for m in ['t','r','b','s']:  # tnc, route, bikeshare, scooter, zip
         mode_count[m] = stripped_path.count(m)
@@ -303,3 +303,161 @@ ax.tick_params(axis='x', rotation=90)
 ax.set_yticks(np.arange(3,7.5,0.5))
 sns.move_legend(ax, 'upper right')
 # %%
+
+
+ #%% **THIS BEGINS THE SENSITIVITY ANALYSIS on scooter pricing**    
+cost_array_dict = {'td_link_tt': td_link_tt, 'td_node_cost':td_node_cost}
+
+b_disc = 0    # a config of b_disc = 1 and b_risk = 0.1 and b_rel=20 has pt/zip combo for Hazelwood-MellonPark
+b_risk = 0.1  # 50 cents for every crash in last two years
+b_rel = 15/3600
+b_price = 1 # do not adjust
+b_tt = 10/36000
+
+all_paths = {} # form is {(beta_param_1, beta_param_2...): link_sequence}
+tdsp_dict_sc_price = {}
+
+sc_links = [lid for link, lid in link_id_map.items() if nid_map[link[0]].startswith('sc') and nid_map[link[1]].startswith('sc')]
+
+for sc_ppmin in 0.01*np.arange(5,41,2):
+    # reduce the scooter cost by x percent
+    price_reduction_pct = (0.39 - sc_ppmin) / 0.39  # percent reduction in scoot link cost
+    cost_array_price = cost_arrays['price'].copy()
+    cost_array_price[sc_links] = (1-price_reduction_pct) * cost_array_price[sc_links]     
+    # final link cost array is a linear combination of the individual components
+    cost_final = (b_tt * cost_arrays['travel_time'] + b_disc* cost_arrays['discomfort'] + b_price * cost_array_price 
+                    + b_rel * cost_arrays['reliability'] + b_risk * cost_arrays['risk'])
+    # Prepare additional files for compatiblity with MAC-POSTS
+    # 4) create link cost file td_link_cost
+    filename = 'td_link_cost'
+    td_link_cost = np.hstack((linkID_array, cost_final)).astype('float32')
+    cost_array_dict['td_link_cost'] = td_link_cost
+    # run tdsp from macposts
+    macposts_folder = os.path.join(cwd, 'macposts_files')    
+    tdsp_dept_time_dict = tdsp.tdsp_macposts_all_times(macposts_folder, cost_array_dict, inv_nid_map) # {timestamp:tdsp_node_seq}
+    tdsp_dict_sc_price[sc_ppmin] = tdsp_dept_time_dict
+# release the memory associated with large link cost array
+del cost_final
+del td_link_cost
+gc.collect()
+
+#%% get path info
+all_paths_sc_price = {}
+for sc_price, tdsp_dept_time_dict in tdsp_dict_sc_price.items():
+    print(sc_price)
+    for t, tdsp_array in tdsp_dept_time_dict.items():
+        print(t)
+        node_seq = tdsp_array[:,0]  
+        link_seq = tdsp_array[:-1,1] 
+        path = [nid_map[int(n)] for n in node_seq]
+        print(path)
+        all_paths_sc_price[(sc_price,t)] = (node_seq, link_seq, path)
+
+#%% get which modes define the path
+for t in [150]: # range(0,170,30):  # choose the t
+    path_modes_sc = {}
+    for sc_ppmin in 0.01*np.arange(5,41,2):
+        path = all_paths_sc_price[(sc_ppmin,t)][2]
+        stripped_path = [n[0] for n in path]
+        mode_count = {}
+        for m in ['t','r','b','s']:  # tnc, route, bikeshare, scooter, zip
+            mode_count[m] = stripped_path.count(m)
+        modes_in_path = []
+        for m, count in mode_count.items():
+            if count > 3:
+                modes_in_path.append(m)
+                path_modes_sc[sc_ppmin] = modes_in_path
+    print(path_modes_sc, '\n')
+
+#%%
+path_costs_sc_price = {} # this will be a dict of dicts
+for (sc_price,timestamp), (node_seq, link_seq, path) in all_paths_sc_price.items():
+    #print(b_tt,timestamp)
+    price_total, risk_total, rel_total, tt_total, discomfort_total = 0, 0, 0, 0, 0
+    cost_total = 0
+    t = int(timestamp)
+    for idx, l in enumerate(link_seq):  # the link seq
+        # look up how many time intervals it takes to cross the link
+        l = int(l) 
+        # adjustment of time (check on this i.e. can delete?)
+        if t >= num_intervals:
+            t = int(num_intervals - 1)
+        intervals_cross = td_link_tt[l,t+1]  # add one bc first col is linkID
+        node_in, node_out = inv_link_id_map[l]   
+        # # TODO: figure out how to add node costs more efficiently
+        # if idx > 0:
+        #     node_id = int(node_seq[idx])
+        #     in_link_id = int(link_seq[idx-1])
+        #     out_link_id = l
+        #     #if any(np.equal(nodecost_ids,[node_id, in_link_id, out_link_id]).all(1)):
+        #     if [node_id, in_link_id, out_link_id] in nodecost_ids:
+        #         nodecost = -2.75 #round(-2.75/2, 2)  # ideally would be -2.75, but in that case we are finding that it is advantageous (under b_TT = b_rel = 0) to transfer 4 times (even though -2.75 should apply only once)
+        #     else:
+        #         nodecost = 0
+        # else:
+        #     nodecost = 0
+        # td_node_cost: nodeID, inLinkID, outLinkID
+        # get the price, risk, and reliability of the link at timestamp t
+        price_link, risk_link, rel_link, tt_link = cost_arrays['price'][l,t], cost_arrays['risk'][l,t], cost_arrays['reliability'][l,t], cost_arrays['travel_time'][l,t]  # (these arrays do not have a col for linkID)
+        discomfort_link = cost_arrays['discomfort'][l,t]
+        #print(nid_map[node_in], nid_map[node_out], round(risk_link/60,3))
+        #cost_link = td_link_cost[l,t+1]  # cannot use td_link_cost b/c it only reflects most recently used betas     
+        # update time and cost totals
+        #print(nid_map[node_in], nid_map[node_out], 'price:', round(price_link,2), 'risk:', round(risk_link,2), 'rel:', round(rel_link/60,2), 'tt:',round(tt_link/60,2), 'discomf:',round(discomfort_link,2))
+        price_total += (price_link) #+ nodecost)
+        risk_total += risk_link
+        rel_total += rel_link
+        tt_total += tt_link
+        discomfort_total += discomfort_link
+        #cost_total += cost_link
+        cost_attributes = {'price_total': price_total, 'risk_total': risk_total, 'rel_total':round(rel_total/60,2), 
+                            'tt_total':round(tt_total/60,2), 'discomfort_total': discomfort_total}
+        t = int(t + intervals_cross)  
+        #print(nid_map[node_in], nid_map[node_out],round(rel_total/60,2), round(tt_total/60,2))
+    path_costs_sc_price[(sc_price,timestamp)] = cost_attributes
+
+#%% choose a specific timestamp
+timestamp = 150
+path_costs_scoot = dict(((sc_ppmin,timestamp), path_costs_sc_price[(sc_ppmin,timestamp)]) for sc_ppmin in 0.01*np.arange(5,41,2))
+
+#betas_rel = betas_used[1]
+cost_dict = list(path_costs_scoot.values())
+
+all_prices = [d['price_total'] for d in cost_dict]
+all_risk = [d['risk_total'] for d in cost_dict]
+all_rel = [d['rel_total'] for d in cost_dict]
+all_tt = [d['tt_total'] for d in cost_dict]
+all_disc = [d['discomfort_total'] for d in cost_dict]
+
+x_axis = 0.01*np.arange(5,41,2)
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+
+ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0, marker='o')
+ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0, marker='o')
+ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0, marker='o')
+ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0, marker='o')
+ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0, marker='o')
+# plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
+# plt.axvline(x=13, color='black',linestyle='--',linewidth=2)
+# ax1.axvspan(6, 8, alpha=0.5, color='gray')
+# ax1.axvspan(12, 14, alpha=0.5, color='gray')
+
+# # distinguish region by mode type
+# ax2.text(0,29,'Public Transit &',fontsize='medium', zorder=1)
+# ax2.text(1.2,27,'Walking',fontsize='medium', zorder=1)
+# ax2.text(7.8,29,'Bikeshare &',fontsize='medium', zorder=1)
+# ax2.text(8.2,27,'Walking',fontsize='medium', zorder=1)
+# ax2.text(20,29,'TNC &',fontsize='medium', zorder=1)
+# ax2.text(19.5,27,'Walking',fontsize='medium', zorder=1)
+ax1.set_ylabel('Travel Time (min), Reliability (min)')
+ax2.set_ylabel('Price ($), Risk, Discomfort')
+ax1.set_xlabel(r'scooter price (\$/minute)')   #$\beta_{TT}$')
+ax2.legend(loc='upper right')
+ax1.legend(loc='upper left')
+ax1.set_xticks(0.01*np.arange(5,41,2), fontsize=10)
+ax1.tick_params(axis='x', labelrotation = 40)
+ax1.set_yticks(np.arange(0,150,20), fontsize=6)
+ax2.set_yticks(np.arange(0,50,5), fonrtsize=6)
+#plt.setp(ax1.get_xticklabels(), visible=True) #not ax2
+#plt.xticks(range(len(all_tt)), x_axis, size='small')
