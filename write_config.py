@@ -107,7 +107,7 @@ config_info = {
     'Supernetwork': {
         'modes_included': ['bs', 'z', 'sc', 't', 'pt'],
         'W_tx': 0.5,  # miles,
-        'W_od': 0.75,  # miles
+        'W_od': 0.59,  # miles
 	    # 'org': [-79.9488, 40.4161],  # hazelwood green
 	    # 'dst': [-79.9194, 40.4517], # mellon park 
         'org': [-79.91101702988759, 40.4642694061984], # larimer

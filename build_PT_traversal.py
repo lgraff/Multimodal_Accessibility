@@ -46,8 +46,7 @@ trips_stoptimes.drop_duplicates(subset=['route_id','direction_id','stop_id'], in
 # trips_stoptimes = trips_stoptimes.sort_values(by='trip_id').groupby(
 #     by=['route_id', 'direction_id', 'stop_sequence']).first().reset_index()
 trips_stoptimes.sort_values(by=['route_id', 'direction_id', 'stop_sequence'], ascending=True, inplace=True)
-
-
+trips_stoptimes = trips_stoptimes[trips_stoptimes['route_id'] != '28X']
 
 traversal_time_sec = trips_stoptimes.groupby(['route_id', 'direction_id', 'trip_id'])['departure_time'].diff()  # minutes
 trips_stoptimes['traversal_time_sec'] = traversal_time_sec

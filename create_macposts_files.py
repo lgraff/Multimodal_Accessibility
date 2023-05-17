@@ -125,12 +125,15 @@ def create_td_cost_arrays(G_super_od):
 
     #% ACTIVE MODES: bike share, walk, and scooter: we will do these modes together since the process is the same
     # inherent assumption is that they are not affected by traffic conditions 
-    df_active = df_G_super_od[df_G_super_od.mode_type.isin(['bs','sc','w'])][['source','target','mode_type','length_m']].reset_index(drop=True)  # maybe also keep frc
+    df_active = df_G_super_od[df_G_super_od.mode_type.isin(['bs','sc','w'])][['source','target','mode_type','etype','length_m']].reset_index(drop=True)  # maybe also keep frc
     # adjust euclidean walking distance by a factor of 1.2 (see: circuity factor, levinson)
-    df_active.loc[df_active['mode_type'] == 'w', 'length_m'] = 1.25 * df_active.loc[df_active['mode_type'] == 'w', 'length_m']
+    df_active.loc[df_active['mode_type'] == 'w', 'length_m'] = 1.2 * df_active.loc[df_active['mode_type'] == 'w', 'length_m']
     speeds = {'bs':conf.config_data['Speed_Params']['bike'], 'sc':conf.config_data['Speed_Params']['scoot'], 'w':conf.config_data['Speed_Params']['walk']}
     df_active['speed'] = df_active['mode_type'].map(speeds)
     df_active['avg_tt_sec'] = df_active['length_m'] / df_active['speed']
+    # add an inconvenience cost associated with transferring
+    inc = 3 # min
+    df_active.loc[df_active.etype=='transfer', 'avg_tt_sec'] =  df_active.loc[df_active.etype=='transfer', 'avg_tt_sec'] + (inc*60)
     tt_all = df_active['avg_tt_sec'].values.reshape(-1,1)  #len()
     bs_sc_intervals = pd.DataFrame(tt_all * np.ones((1,len(interval_mapping))))
     bs_sc_intervals.columns = interval_colnames
