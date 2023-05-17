@@ -96,14 +96,6 @@ class Supernetwork:
                         # TO DO: account for a no-cost public transit transfer in node-movement cost file
                         fixed_price = 0   # already account for PT fixed cost in the boarding edges
                         
-                        # TO DO: add inconvenience cost. or, we can embed inconvenience cost into "discomfort" attribute?
-                        # attr_dict = {'0_avg_TT_sec': walk_time + wait_time,
-                        #              '0_price': fixed_price,
-                        #              '0_reliability': walk_time * conf.config_data['Reliability_Params']['walk'],
-                        #              '0_risk': 1, 
-                        #              '0_discomfort': conf.config_data['Discomfort_Params']['walk']}                                  
-                        #trans_edges[edge] = attr_dict | {'mode_type':'w'} | {'type':etype}  # | operator concatenates dicts
-                        
                         # above, we can remove lines walk_time = 0 through fixed_price = 0
                         attr_dict = {'length_m':self.gcd_dist[i,j], 'mode_type':'w', 'etype':etype} 
                         trans_edges[edge] = attr_dict

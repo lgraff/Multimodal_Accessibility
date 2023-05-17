@@ -180,7 +180,7 @@ def od_cnx(G_super_filepath, o_coord, d_coord):
                     # generate data and add edge org -- sc
                     edge = (i_name, k_name)
                     sc_cost_dict = sc_costs[i_name]
-                    sc_cost_dict['type'] = 'od_cnx'   
+                    sc_cost_dict['etype'] = 'od_cnx'   
                     od_cnx_edges[edge] = sc_cost_dict
                 if i_name == 'dst':
                     # build dst - sc

@@ -103,13 +103,13 @@ b_tt, b_disc, b_price, b_rel, b_risk = beta_params['b_TT'], beta_params['b_disc'
 cost_array_dict = {'td_link_tt': td_link_tt, 'td_node_cost':td_node_cost}
 
 b_disc = 0    # a config of b_disc = 1 and b_risk = 0.1 and b_rel=20 has pt/zip combo for Hazelwood-MellonPark
-b_risk = 0.1  # 50 cents for every crash in last two years
+b_risk = 0.10  # 10 cents for every crash in last two years
 b_rel = 15/3600
 b_price = 1 # do not adjust
 
 all_paths = {} # form is {(beta_param_1, beta_param_2...): link_sequence}
 tdsp_dict = {}
-for b_tt in np.arange(0/3600, 30/3600, 2/3600): 
+for b_tt in np.arange(0/3600, 22/3600, 2/3600): 
     #for b_risk in np.arange(0, 50, 0.10): 
         #for b_risk in np.arange(0, 0.5, 0.1):
         #betas['b_risk'] = b_risk
@@ -143,11 +143,12 @@ for b_tt, tdsp_dept_time_dict in tdsp_dict.items():
         print(path)
         all_paths[(b_tt,t)] = (node_seq, link_seq, path)
 
-# get which modes define the path
-for t in [0]: # range(0,170,30):  # choose the t
+#%% get which modes define the path
+for t in [0]:  # choose the t
     path_modes = {}
-    for b_tt in np.arange(0/3600, 30/3600, 2/3600):
+    for b_tt in np.arange(0/3600, 22/3600, 2/3600):
         path = all_paths[(b_tt,t)][2]
+        print(path)
         stripped_path = [n[0] for n in path]
         mode_count = {}
         for m in ['t','r','b','s']:  # tnc, route, bikeshare, scooter, zip
@@ -197,6 +198,7 @@ for (b_tt,timestamp), (node_seq, link_seq, path) in all_paths.items():
         # update time and cost totals
         #print(nid_map[node_in], nid_map[node_out], 'price:', round(price_link,2), 'risk:', round(risk_link,2), 'rel:', round(rel_link/60,2), 'tt:',round(tt_link/60,2), 'discomf:',round(discomfort_link,2))
         price_total += (price_link) #+ nodecost)
+        print(nid_map[node_in], nid_map[node_out], round(price_link,3), round(tt_link,3))
         risk_total += risk_link
         rel_total += rel_link
         tt_total += tt_link
@@ -205,12 +207,12 @@ for (b_tt,timestamp), (node_seq, link_seq, path) in all_paths.items():
         cost_attributes = {'price_total': price_total, 'risk_total': risk_total, 'rel_total':round(rel_total/60,2), 
                             'tt_total':round(tt_total/60,2), 'discomfort_total': discomfort_total}
         t = int(t + intervals_cross)  
-        print(nid_map[node_in], nid_map[node_out],round(rel_total/60,2), round(tt_total/60,2))
+        #print(nid_map[node_in], nid_map[node_out],round(price_total,2), round(tt_total/60,2))
     path_costs[(b_tt,timestamp)] = cost_attributes
 # %%
 # choose a specific timestamp
-timestamp = 0
-path_costs_time = dict(((b_tt,timestamp), path_costs[(b_tt,timestamp)]) for b_tt in np.arange(0/3600, 30/3600, 2/3600))
+timestamp = 90
+path_costs_time = dict(((b_tt,timestamp), path_costs[(b_tt,timestamp)]) for b_tt in np.arange(0/3600, 22/3600, 2/3600))
 
 betas_used = list(zip(*list(path_costs_time.keys()))) # tuple(zip(*list(zip(*path_costs))[0]))
 betas_tt = betas_used[0]
@@ -234,8 +236,8 @@ ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0, marker='o')
 ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0, marker='o')
 # plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
 # plt.axvline(x=13, color='black',linestyle='--',linewidth=2)
-ax1.axvspan(6, 8, alpha=0.5, color='gray')
-ax1.axvspan(12, 14, alpha=0.5, color='gray')
+ax1.axvspan(8, 10, alpha=0.5, color='gray')
+#ax1.axvspan(12, 14, alpha=0.5, color='gray')
 
 # distinguish region by mode type
 ax2.text(0,29,'Public Transit &',fontsize='medium', zorder=1)
@@ -250,8 +252,8 @@ ax1.set_xlabel(r'$\beta_{TT}\ (\$/$hour)')   #$\beta_{TT}$')
 ax2.legend(loc='upper right')
 ax1.legend(loc='upper left')
 ax2.set_xticks(np.arange(0,32,2), fontsize=10)
-ax1.set_yticks(np.arange(0,160,20), fontsize=6)
-ax2.set_yticks(np.arange(0,50,5), fonrtsize=6)
+ax1.set_yticks(np.arange(0,100,20), fontsize=6)
+ax2.set_yticks(np.arange(0,30,5), fonrtsize=6)
 #plt.setp(ax1.get_xticklabels(), visible=True) #not ax2
 #plt.xticks(range(len(all_tt)), x_axis, size='small')
 
@@ -292,16 +294,16 @@ import seaborn as sns
 df_entries = list(zip(list(total_cost_by_time.keys()),list(total_cost_by_time.values()),list(path_modes.values())))
 df = pd.DataFrame(df_entries, columns = ['minute', 'total_cost', 'modes_used_list'])
 mode_abbrev_dict = {'b,':'bike share + walk', 'r,':'public transit + walk', 'r,b,':'public transit + walk',
-                    'r,s,':'scooter + public transit + walk', 't,':'TNC + walk'}
+                    'r,s,':'public transit + scooter + walk', 't,':'TNC + walk', 'r,b,s,': 'public transit + bikeshare + scooter + walk' }
 df['modes used'] = df['modes_used_list'].map(mode_abbrev_dict)
 df['minute'] = '08' + df['minute'].astype('str').str.zfill(2) #'%H%M'
 df['departure_time'] = pd.to_datetime(df['minute'], format='%H%M').dt.strftime('%H:%M')
 ax = sns.scatterplot(x='departure_time', y='total_cost', data=df, hue='modes used')
-ax.set_ylabel('total cost ($)')
+ax.set_ylabel('generalized travel cost ($)')
 ax.set_xlabel('departure time')
 ax.tick_params(axis='x', rotation=90)
 ax.set_yticks(np.arange(3,7.5,0.5))
-sns.move_legend(ax, 'upper right')
+sns.move_legend(ax, 'center right')
 # %%
 
 
@@ -309,10 +311,10 @@ sns.move_legend(ax, 'upper right')
 cost_array_dict = {'td_link_tt': td_link_tt, 'td_node_cost':td_node_cost}
 
 b_disc = 0    # a config of b_disc = 1 and b_risk = 0.1 and b_rel=20 has pt/zip combo for Hazelwood-MellonPark
-b_risk = 0.1  # 50 cents for every crash in last two years
+b_risk = 0.10  # 50 cents for every crash in last two years
 b_rel = 15/3600
 b_price = 1 # do not adjust
-b_tt = 10/36000
+b_tt = 10/3600
 
 all_paths = {} # form is {(beta_param_1, beta_param_2...): link_sequence}
 tdsp_dict_sc_price = {}
@@ -354,10 +356,11 @@ for sc_price, tdsp_dept_time_dict in tdsp_dict_sc_price.items():
         all_paths_sc_price[(sc_price,t)] = (node_seq, link_seq, path)
 
 #%% get which modes define the path
-for t in [150]: # range(0,170,30):  # choose the t
+for t in [0]: # range(0,170,30):  # choose the t
     path_modes_sc = {}
     for sc_ppmin in 0.01*np.arange(5,41,2):
         path = all_paths_sc_price[(sc_ppmin,t)][2]
+        print(path)
         stripped_path = [n[0] for n in path]
         mode_count = {}
         for m in ['t','r','b','s']:  # tnc, route, bikeshare, scooter, zip
@@ -461,3 +464,50 @@ ax1.set_yticks(np.arange(0,150,20), fontsize=6)
 ax2.set_yticks(np.arange(0,50,5), fonrtsize=6)
 #plt.setp(ax1.get_xticklabels(), visible=True) #not ax2
 #plt.xticks(range(len(all_tt)), x_axis, size='small')
+
+
+
+#%%%
+timestamp = 0
+path_costs_scoot = dict(((sc_ppmin,timestamp), path_costs_sc_price[(sc_ppmin,timestamp)]) for sc_ppmin in 0.01*np.arange(5,41,2))
+
+betas_used = list(zip(*list(path_costs_time.keys()))) # tuple(zip(*list(zip(*path_costs))[0]))
+betas_tt = betas_used[0]
+#betas_rel = betas_used[1]
+cost_dict = list(path_costs_time.values())
+
+all_prices = [d['price_total'] for d in cost_dict]
+all_risk = [d['risk_total'] for d in cost_dict]
+all_rel = [d['rel_total'] for d in cost_dict]
+all_tt = [d['tt_total'] for d in cost_dict]
+all_disc = [d['discomfort_total'] for d in cost_dict]
+
+x_axis = np.array(betas_tt)*3600
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+
+ax2.plot(x_axis, all_prices, label='price', color='C0',  zorder=0, marker='o')
+ax2.plot(x_axis, all_risk, label='risk', color='C1',  zorder=0, marker='o')
+ax1.plot(x_axis, all_rel, label='reliability', color='C4',  zorder=0, marker='o')
+ax1.plot(x_axis, all_tt, label='travel time', color='C2',  zorder=0, marker='o')
+ax2.plot(x_axis, all_disc, label='discomfort', color='C3',  zorder=0, marker='o')
+# plt.axvline(x=6, color='black',linestyle='--',linewidth=2)
+# plt.axvline(x=13, color='black',linestyle='--',linewidth=2)
+ax1.axvspan(8, 10, alpha=0.5, color='gray')
+#ax1.axvspan(12, 14, alpha=0.5, color='gray')
+
+# distinguish region by mode type
+ax2.text(0,29,'Public Transit &',fontsize='medium', zorder=1)
+ax2.text(1.2,27,'Walking',fontsize='medium', zorder=1)
+ax2.text(7.8,29,'Bikeshare &',fontsize='medium', zorder=1)
+ax2.text(8.2,27,'Walking',fontsize='medium', zorder=1)
+ax2.text(20,29,'TNC &',fontsize='medium', zorder=1)
+ax2.text(19.5,27,'Walking',fontsize='medium', zorder=1)
+ax1.set_ylabel('Travel Time (min), Reliability (min)')
+ax2.set_ylabel('Price ($), Risk, Discomfort')
+ax1.set_xlabel(r'$\beta_{TT}\ (\$/$hour)')   #$\beta_{TT}$')
+ax2.legend(loc='upper right')
+ax1.legend(loc='upper left')
+ax2.set_xticks(np.arange(0,32,2), fontsize=10)
+ax1.set_yticks(np.arange(0,100,20), fontsize=6)
+ax2.set_yticks(np.arange(0,30,5), fonrtsize=6)

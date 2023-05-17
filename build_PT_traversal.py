@@ -52,4 +52,8 @@ trips_stoptimes.sort_values(by=['route_id', 'direction_id', 'stop_sequence'], as
 traversal_time_sec = trips_stoptimes.groupby(['route_id', 'direction_id', 'trip_id'])['departure_time'].diff()  # minutes
 trips_stoptimes['traversal_time_sec'] = traversal_time_sec
 
+# remove the 28x bus route (this is user knoweldge, since the 28x only goes to airport and cannot be used for intracity travel)
+trips_stoptimes = trips_stoptimes[trips_stoptimes['route_id'] != '28X']
+
 trips_stoptimes.to_csv(os.path.join(cwd, 'Data', 'Output_Data', 'PT_traversal_time.csv'))            
+

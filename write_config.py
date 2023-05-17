@@ -13,10 +13,10 @@ import yaml
 # Define parameters
 config_info = {
     'Geography': {
-        # 'neighborhoods' : ['Hazelwood', 'Glen Hazel', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North',
-        #                    'South Oakland', 'Central Oakland', 'North Oakland', 'Point Breeze'],
+        # 'neighborhoods' : ['Hazelwood', 'Greenfield', 'Squirrel Hill South', 'Squirrel Hill North',
+        #                    'South Oakland', 'Central Oakland', 'North Oakland', 'West Oakland'],
         'neighborhoods': ['Central Oakland','Squirrel Hill South', 'Squirrel Hill North',
-                             'North Oakland', 'Larimer', 'Point Breeze', 'Shadyside','East Liberty'],
+                              'North Oakland', 'Larimer', 'Point Breeze', 'Shadyside','East Liberty'],
         'buffer': 0.2 # miles
         },
     'Beta_Params': {
@@ -108,11 +108,11 @@ config_info = {
         'modes_included': ['bs', 'z', 'sc', 't', 'pt'],
         'W_tx': 0.5,  # miles,
         'W_od': 0.75,  # miles
-	    # 'org': [-79.9488, 40.4161],  # hazelwood green
-	    # 'dst': [-79.9194, 40.4517], # mellon park 
+        # 'org': [-79.94510431660343,  40.41172561820658], # hazelwood
+        # 'dst': [-79.95137478282426, 40.43878091188718], # central oakland
         'org': [-79.91101702988759, 40.4642694061984], # larimer
         'dst': [-79.95137478282426, 40.43878091188718],  # central oakland
-        'num_park_hours': 2 
+        'num_park_hours': 2  
     # chatham univ: [-79.92399900719222, 40.44955761072877] 
         }  #, 'pb']}
     
