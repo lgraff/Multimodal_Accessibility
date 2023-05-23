@@ -30,7 +30,7 @@ config_info = {
         'walk': 1.3,  # m/s
         #'parking_speed': 5 / 3600 * 1609, # miles /hr / 3600 s/hr * 1609 meter/mile = m/s
         'scoot': 2.78, # m/s. see: A comparative analysis of e-scooter and e-bike usage patterns...(Almannnaa, Ashqar, ...)
-        'bike': 14.5 / 3600 * 1000,    # Characterizing the speed and pahts of shared bicycle use in Lyon (Jensen et al) 2010
+        'bike': 14.5 / 3600 * 1000,    # Characterizing the speed and paths of shared bicycle use in Lyon (Jensen et al) 2010
         'TNC': {'wait_time': 7}  # minutes
         },   # km/hr
     'Price_Params': {
